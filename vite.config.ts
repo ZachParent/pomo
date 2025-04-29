@@ -1,7 +1,7 @@
-import { defineConfig } from 'vite'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
-import path from 'path'
-import { fileURLToPath } from 'url'; // Import the helper
+import { defineConfig } from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import path from "path";
+import { fileURLToPath } from "url"; // Import the helper
 
 // Get the directory name using import.meta.url
 const __filename = fileURLToPath(import.meta.url);
@@ -14,11 +14,9 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        // Use path.resolve with the correctly derived __dirname
-        includePaths: [path.resolve(__dirname, 'node_modules')],
-        // Optionally include global SASS variables/mixins here
-        // additionalData: `@import './src/variables.scss';`
+        // Revert loadPaths back to the main node_modules directory
+        loadPaths: [path.resolve(__dirname, "node_modules")],
       },
     },
   },
-})
+});
