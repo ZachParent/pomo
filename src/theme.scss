@@ -1,0 +1,20 @@
+@use "@material/theme" with (
+  $primary: #6200ee, // Purple
+  $secondary: #03dac6, // Teal
+  $surface: #fff,
+  $background: #fff,
+  $error: #b00020
+);
+
+@use "@material/typography";
+
+// @use "smui-theme";
+
+// If you need to customize SMUI component styles, you can do it here.
+// Example:
+// @use '@material/button/mdc-button';
+// @use '@material/button';
+//
+// .mdc-button {
+//   @include button.shape-radius(50%);
+// } 

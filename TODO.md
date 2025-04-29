@@ -2,15 +2,15 @@
 
 ## Phase 1: Core Setup & Local Pomodoro
 
--   [ ] **Choose Frontend Framework:**
-    -   [ ] Evaluate Svelte vs. React based on preference and learning curve.
-    -   [ ] Decision: _________
--   [ ] **Choose Material UI Library:**
-    -   [ ] Research options compatible with the chosen framework (e.g., Material UI for React, SMUI for Svelte, or a framework-agnostic CSS lib).
-    -   [ ] Decision: _________
--   [ ] **Project Initialization:**
-    -   [ ] Set up the basic project structure using the chosen framework's CLI (e.g., `create-react-app`, `npx degit sveltejs/template`).
-    -   [ ] Integrate the chosen UI library.
+-   [x] **Choose Frontend Framework:**
+    -   [x] Evaluate Svelte vs. React based on preference and learning curve.
+    -   [x] Decision: **Svelte**
+-   [x] **Choose Material UI Library:**
+    -   [x] Research options compatible with the chosen framework (e.g., Material UI for React, SMUI for Svelte, or a framework-agnostic CSS lib).
+    -   [x] Decision: **SMUI**
+-   [x] **Project Initialization:**
+    -   [x] Set up the basic project structure using the chosen framework's CLI (e.g., `pnpm create vite . --template svelte-ts`).
+    -   [x] Integrate the chosen UI library. (Installed SMUI, SASS config, theme file created. Note: `@use 'smui-theme';` commented out due to build issue).
 -   [ ] **Local Pomodoro Timer:**
     -   [ ] Implement the core timer logic (work, short break, long break cycles).
     -   [ ] Create UI components for displaying time, cycle status.
@@ -21,7 +21,7 @@
 
 -   [ ] **Choose P2P Approach:**
     -   [ ] Research P2P libraries (e.g., PeerJS, simple-peer). Consider ease of use and signaling server requirements. WebRTC directly is an option but more complex.
-    -   [ ] Decision: _________
+    -   [ ] Decision: **PeerJS (Chosen)**
 -   [ ] **Signaling Server (if required):**
     -   [ ] Set up or use a public signaling server (e.g., PeerJS offers one, or deploy a simple one on Vercel/Glitch).
 -   [ ] **Session Management:**
