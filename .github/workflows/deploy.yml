@@ -55,10 +55,16 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: List files in build directory (if exists)
+        run: ls -al build || echo "Build directory not found"
+
+      - name: List files in dist directory (if exists)
+        run: ls -al dist || echo "Dist directory not found"
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./build # The output directory specified in svelte.config.js
+          path: ./dist # Change path to dist
 
   # Deployment job
   deploy:
