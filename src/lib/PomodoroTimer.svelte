@@ -138,15 +138,15 @@
     <LinearProgress progress={progress} determinate={true} buffer={1} closed={currentState === 'Stopped' || currentState === 'Paused'} />
     <Content class="mdc-typography--body2 controls">
         {#if !isRunning}
-            <Button variant="raised" on:click={start} disabled={currentState !== 'Stopped' && currentState !== 'Paused' && secondsRemaining === 0}>
+            <Button variant="raised" onclick={start} disabled={currentState !== 'Stopped' && currentState !== 'Paused' && secondsRemaining === 0}>
                 Start
             </Button>
         {:else}
-            <Button variant="raised" on:click={pause}>
+            <Button variant="raised" onclick={pause}>
                 Pause
             </Button>
         {/if}
-        <Button on:click={reset} disabled={currentState === 'Stopped'}>
+        <Button onclick={reset} disabled={currentState === 'Stopped'}>
             Reset
         </Button>
     </Content>
