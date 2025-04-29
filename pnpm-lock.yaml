@@ -20,6 +20,9 @@ importers:
       '@smui/card':
         specifier: 8.0.0-beta.3
         version: 8.0.0-beta.3
+      '@smui/circular-progress':
+        specifier: 8.0.0-beta.3
+        version: 8.0.0-beta.3
       '@smui/linear-progress':
         specifier: 8.0.0-beta.3
         version: 8.0.0-beta.3
@@ -240,6 +243,9 @@ packages:
 
   '@material/card@14.0.0':
     resolution: {integrity: sha512-SnpYWUrCb92meGYLXV7qa/k40gnHR6rPki6A1wz0OAyG2twY48f0HLscAqxBLvbbm1LuRaqjz0RLKGH3VzxZHw==}
+
+  '@material/circular-progress@14.0.0':
+    resolution: {integrity: sha512-7EdkP6ty54g6qs6zzlsw29vWlUyrcSWr9b4pGGx4D/iNJww+eyxXZ07iWoNOr4uLgguauWEft2axpQiFCwFD0g==}
 
   '@material/density@14.0.0':
     resolution: {integrity: sha512-NlxXBV5XjNsKd8UXF4K/+fOXLxoFNecKbsaQO6O2u+iG8QBfFreKRmkhEBb2hPPwC3w8nrODwXX0lHV+toICQw==}
@@ -477,6 +483,9 @@ packages:
 
   '@smui/card@8.0.0-beta.3':
     resolution: {integrity: sha512-mxTg8u74YC2F7UwcwjJfNcyoqxBJVrcx6zhyBti/BFrIJ0QdV/QpMqLNndrvCPV8amrODeBlNApiaqBmU4mLKQ==}
+
+  '@smui/circular-progress@8.0.0-beta.3':
+    resolution: {integrity: sha512-3HguJAek80OUaOoNUeKghhIfhSNbt/lvhIbqe+YX2s3O++3HKXxykBRsAlSrtXbUdjWxB7A/d4RcSdbsQvGdVQ==}
 
   '@smui/common@8.0.0-beta.3':
     resolution: {integrity: sha512-j4XE0cGn1O4PgfAFyemNE6KQicnjOUnSb+gWD52GJntatBEhszz1GdaKUTIF4oxM/V7RW5nSX2xzrilPytLEwg==}
@@ -1000,6 +1009,16 @@ snapshots:
       '@material/theme': 14.0.0
       tslib: 2.8.1
 
+  '@material/circular-progress@14.0.0':
+    dependencies:
+      '@material/animation': 14.0.0
+      '@material/base': 14.0.0
+      '@material/feature-targeting': 14.0.0
+      '@material/progress-indicator': 14.0.0
+      '@material/rtl': 14.0.0
+      '@material/theme': 14.0.0
+      tslib: 2.8.1
+
   '@material/density@14.0.0':
     dependencies:
       tslib: 2.8.1
@@ -1242,6 +1261,11 @@ snapshots:
       '@smui/common': 8.0.0-beta.3
       '@smui/icon-button': 8.0.0-beta.3
       '@smui/ripple': 8.0.0-beta.3
+
+  '@smui/circular-progress@8.0.0-beta.3':
+    dependencies:
+      '@material/circular-progress': 14.0.0
+      '@smui/common': 8.0.0-beta.3
 
   '@smui/common@8.0.0-beta.3':
     dependencies:

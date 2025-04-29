@@ -1,155 +1,74 @@
 <script lang="ts">
-    import { onMount, onDestroy } from 'svelte';
+    // Removed onMount, onDestroy as internal interval is gone
     import Card, { Content } from '@smui/card';
     import Button from '@smui/button';
     import LinearProgress from '@smui/linear-progress';
 
-    type TimerState = 'Work' | 'Short Break' | 'Long Break' | 'Paused' | 'Stopped';
+    // Import the shared timer state and phase enum
+    import { timerState, TimerPhase } from './timerStore';
+    // Import P2P action request functions
+    import { requestStartTimer, requestPauseTimer, requestResetTimer } from './p2pStore';
 
-    // --- Settings (Hardcoded for now) ---
-    const WORK_MINUTES = 25;
-    const SHORT_BREAK_MINUTES = 5;
-    const LONG_BREAK_MINUTES = 15;
-    const SESSIONS_BEFORE_LONG_BREAK = 4;
+    // --- Reactive State (derived from store) ---
+    $: state = $timerState; // Convenience alias
 
-    // --- Reactive State ---
-    let currentState: TimerState = 'Stopped';
-    let secondsRemaining = WORK_MINUTES * 60;
-    let sessionsCompleted = 0;
-    let timerInterval: number | null = null;
-    let prePausedState: TimerState | null = null; // Store state before pausing
-
-    // --- Derived State ---
+    // --- Derived State (calculations based on store) ---
     $: currentDuration = (
-        currentState === 'Work' ? WORK_MINUTES * 60 :
-        currentState === 'Short Break' ? SHORT_BREAK_MINUTES * 60 :
-        currentState === 'Long Break' ? LONG_BREAK_MINUTES * 60 :
-        WORK_MINUTES * 60 // Default to work duration if stopped/paused
+        state.phase === TimerPhase.Work ? state.workDuration :
+        state.phase === TimerPhase.ShortBreak ? state.shortBreakDuration :
+        state.phase === TimerPhase.LongBreak ? state.longBreakDuration :
+        state.workDuration // Default
     );
-    $: progress = currentState === 'Stopped' || currentState === 'Paused' ? 0 : (currentDuration - secondsRemaining) / currentDuration;
-    $: formattedTime = `${Math.floor(secondsRemaining / 60).toString().padStart(2, '0')}:${(secondsRemaining % 60).toString().padStart(2, '0')}`;
-    $: isRunning = timerInterval !== null;
+    // Prevent division by zero or negative progress if duration is 0 or less
+    $: progress = currentDuration > 0 ? (currentDuration - state.timeLeft) / currentDuration : 0;
+    // Ensure progress is between 0 and 1
+    $: clampedProgress = Math.max(0, Math.min(1, progress));
 
-    // --- Timer Logic ---
-    const tick = () => {
-        if (secondsRemaining > 0) {
-            secondsRemaining--;
-        } else {
-            // Timer finished, transition to next state
-            if (currentState === 'Work') {
-                sessionsCompleted++;
-                if (sessionsCompleted % SESSIONS_BEFORE_LONG_BREAK === 0) {
-                    currentState = 'Long Break';
-                    secondsRemaining = LONG_BREAK_MINUTES * 60;
-                } else {
-                    currentState = 'Short Break';
-                    secondsRemaining = SHORT_BREAK_MINUTES * 60;
-                }
-            } else { // Must be 'Short Break' or 'Long Break'
-                currentState = 'Work';
-                secondsRemaining = WORK_MINUTES * 60;
-            }
-            // Automatically start next timer if it wasn't paused
-            if (isRunning) {
-                // Keep timer running
-            } else {
-                // If it finished naturally, stop the interval
-                stopTimerInterval();
-                currentState = 'Stopped'; // Or maybe stay on the break type but stopped?
-                // Reset to Work if stopped after break
-                 secondsRemaining = WORK_MINUTES * 60;
-            }
-        }
+    $: formattedTime = `${Math.floor(state.timeLeft / 60).toString().padStart(2, '0')}:${(state.timeLeft % 60).toString().padStart(2, '0')}`;
+
+    // --- Control Functions (Call P2P actions) ---
+    const handleStart = () => {
+        console.log('Start button clicked');
+        requestStartTimer();
     };
 
-    const startTimerInterval = () => {
-        if (timerInterval === null) {
-            timerInterval = window.setInterval(tick, 1000);
-        }
+    const handlePause = () => {
+        console.log('Pause button clicked');
+        requestPauseTimer();
     };
 
-    const stopTimerInterval = () => {
-        if (timerInterval !== null) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        }
+    const handleReset = () => {
+        console.log('Reset button clicked');
+        requestResetTimer();
     };
 
-    // --- Control Functions ---
-    const start = () => {
-        let stateToStart: TimerState = 'Work'; // Default to Work
-
-        if (currentState === 'Stopped') {
-            // Starting fresh
-            stateToStart = 'Work';
-            secondsRemaining = WORK_MINUTES * 60;
-            sessionsCompleted = 0;
-        } else if (currentState === 'Paused') {
-            // Resuming from pause
-            stateToStart = prePausedState ?? 'Work'; // Restore pre-paused state or default to Work
-            prePausedState = null; // Clear pre-paused state
-        } else if (currentState === 'Short Break' || currentState === 'Long Break') {
-            // If the break finished naturally and we hit start
-            if (secondsRemaining === 0) {
-                stateToStart = 'Work';
-                secondsRemaining = WORK_MINUTES * 60;
-            } else {
-                // If starting during a break (treat as resuming break)
-                stateToStart = currentState;
-            }
-        } else {
-            // Should not happen if already running, but safe default
-            stateToStart = 'Work';
-            secondsRemaining = WORK_MINUTES * 60;
-        }
-
-        currentState = stateToStart;
-        startTimerInterval();
-
-         // Note: isRunning is reactive, no need to manually set UI state here
-    };
-
-    const pause = () => {
-        if (isRunning) { // Only pause if actually running
-            prePausedState = currentState; // Store current state before pausing
-            stopTimerInterval();
-            currentState = 'Paused';
-        }
-    };
-
-    const reset = () => {
-        stopTimerInterval();
-        currentState = 'Stopped';
-        secondsRemaining = WORK_MINUTES * 60;
-        sessionsCompleted = 0;
-        prePausedState = null; // Clear pre-paused state on reset
-    };
-
-    // Cleanup interval on component destroy
-    onDestroy(() => {
-        stopTimerInterval();
-    });
+    // No internal timer interval or cleanup needed here anymore
 
 </script>
 
 <Card padded class="pomodoro-card">
-    <div class="status">{currentState}</div>
+    <div class="status">{state.phase} {state.isRunning ? '(Running)' : '(Paused)'}</div>
     <div class="timer-display">{formattedTime}</div>
-    <LinearProgress progress={progress} determinate={true} buffer={1} closed={currentState === 'Stopped' || currentState === 'Paused'} />
+    <LinearProgress progress={clampedProgress} buffer={1} closed={!state.isRunning} />
     <Content class="mdc-typography--body2 controls">
-        {#if !isRunning}
-            <Button variant="raised" onclick={start} disabled={currentState !== 'Stopped' && currentState !== 'Paused' && secondsRemaining === 0}>
+        {#if !state.isRunning}
+            <!-- Simplified disabled logic for now, might depend on host/client later -->
+            <Button variant="raised" onclick={handleStart}>
                 Start
             </Button>
         {:else}
-            <Button variant="raised" onclick={pause}>
+            <Button variant="raised" onclick={handlePause}>
                 Pause
             </Button>
         {/if}
-        <Button onclick={reset} disabled={currentState === 'Stopped'}>
+        <!-- Simplified disabled logic -->
+        <Button onclick={handleReset} disabled={!state.isRunning && state.timeLeft === state.workDuration && state.phase === TimerPhase.Work}>
             Reset
         </Button>
     </Content>
+    <div class="cycle-info">
+        Cycles Completed: {state.cycleCount} / {state.longBreakInterval}
+    </div>
 </Card>
 
 <style lang="scss">
@@ -164,6 +83,7 @@
         font-size: 1.2em;
         color: var(--mdc-theme-text-secondary-on-background, rgba(0, 0, 0, 0.6));
         margin-bottom: 0.5em;
+        min-height: 1.5em; // Prevent layout shift when (Running)/(Paused) appears
     }
 
     .timer-display {
@@ -180,9 +100,15 @@
         gap: 1em;
     }
 
-     // Override default LinearProgress height if needed
+    // Override default LinearProgress height if needed
     :global(.pomodoro-card .mdc-linear-progress) {
         height: 8px;
         margin-top: 1em;
+    }
+
+    .cycle-info {
+        margin-top: 1em;
+        font-size: 0.9em;
+        color: var(--mdc-theme-text-secondary-on-background, rgba(0, 0, 0, 0.6));
     }
 </style> 
