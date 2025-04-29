@@ -7,8 +7,11 @@ import { fileURLToPath } from "url"; // Import the helper
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const base = process.env.NODE_ENV === "production" ? "/pomo" : "/";
+
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: base, // Explicitly set Vite's base path
   plugins: [svelte()],
   // Add SASS preprocessor options
   css: {
