@@ -36,14 +36,16 @@
 
 ## Phase 2.5: UX improvements
 
-- [ ] When choosing to start a session, redirect to a new page with the session ID as part of the URL.
-- [ ] When joining a session when there is no host yet, give the user the option to become the host
-- [ ] For session IDs, allow the user to enter the "room name" instead of a random string, and prepend an environment variable to the session ID to avoid collisions.
-- [ ] When no sessionID is provided, show a home page with a form to enter a room name to join/start a session
-  - The user doesn't need to know if they are joining or starting a session, they just need to enter a room name
-- [ ] Add a "leave session" button to the session page, which returns to the home page
-- [ ] Ensure that the page is responsive and works on mobile devices
+- [x] When choosing to start a session, redirect to a new page with the session ID as part of the URL.
+- [x] When joining a session when there is no host yet, give the user the option to become the host
+- [x] For session IDs, allow the user to enter the "room name" instead of a random string, and prepend an environment variable to the session ID to avoid collisions.
+- [x] When no sessionID is provided, show a home page with a form to enter a room name to join/start a session
+  - [x] The user doesn't need to know if they are joining or starting a session, they just need to enter a room name
+- [x] Add a "leave session" button to the session page, which returns to the home page
+- [x] Ensure that the page is responsive and works on mobile devices
 - [ ] Add a light/dark theme toggle
+- [ ] Add an alert and a sound effect when the timer reaches 0
+- [ ] Make it so the work timer never starts on its own, but the break timers do
 
 ## Phase 3: Collaboration Feature
 

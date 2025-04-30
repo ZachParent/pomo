@@ -48,7 +48,6 @@
 <style>
   /* Global styles remain here */
   main {
-    padding: 1em;
     max-width: 800px;
     margin: 0 auto;
     font-family: var(--mdc-typography-font-family, Roboto, sans-serif);
