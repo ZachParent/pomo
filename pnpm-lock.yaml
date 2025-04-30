@@ -26,9 +26,15 @@ importers:
       '@smui/linear-progress':
         specifier: 8.0.0-beta.3
         version: 8.0.0-beta.3
+      '@smui/textfield':
+        specifier: 8.0.0-beta.3
+        version: 8.0.0-beta.3
       peerjs:
         specifier: ^1.5.4
         version: 1.5.4
+      svelte-routing:
+        specifier: ^2.13.0
+        version: 2.13.0
     devDependencies:
       '@sveltejs/adapter-static':
         specifier: ^3.0.8
@@ -262,14 +268,23 @@ packages:
   '@material/feature-targeting@14.0.0':
     resolution: {integrity: sha512-a5WGgHEq5lJeeNL5yevtgoZjBjXWy6+klfVWQEh8oyix/rMJygGgO7gEc52uv8fB8uAIoYEB3iBMOv8jRq8FeA==}
 
+  '@material/floating-label@14.0.0':
+    resolution: {integrity: sha512-Aq8BboP1sbNnOtsV72AfaYirHyOrQ/GKFoLrZ1Jt+ZGIAuXPETcj9z7nQDznst0ZeKcz420PxNn9tsybTbeL/Q==}
+
   '@material/focus-ring@14.0.0':
     resolution: {integrity: sha512-fqqka6iSfQGJG3Le48RxPCtnOiaLGPDPikhktGbxlyW9srBVMgeCiONfHM7IT/1eu80O0Y67Lh/4ohu5+C+VAQ==}
 
   '@material/icon-button@14.0.0':
     resolution: {integrity: sha512-wHMqzm7Q/UwbWLoWv32Li1r2iVYxadIrwTNxT0+p+7NdfI3lEwMN3NoB0CvoJnHTljjXDzce0KJ3nZloa0P0gA==}
 
+  '@material/line-ripple@14.0.0':
+    resolution: {integrity: sha512-Rx9eSnfp3FcsNz4O+fobNNq2PSm5tYHC3hRpY2ZK3ghTvgp3Y40/soaGEi/Vdg0F7jJXRaBSNOe6p5t9CVfy8Q==}
+
   '@material/linear-progress@14.0.0':
     resolution: {integrity: sha512-MGIAWMHMW6TSV/TNWyl5N/escpDHk3Rq6hultFif+D9adqbOXrtfZZIFPLj1FpMm1Ucnj6zgOmJHgCDsxRVNIA==}
+
+  '@material/notched-outline@14.0.0':
+    resolution: {integrity: sha512-6S58DlWmhCDr4RQF2RuwqANxlmLdHtWy2mF4JQLD9WOiCg4qY9eCQnMXu3Tbhr7f/nOZ0vzc7AtA3vfJoZmCSw==}
 
   '@material/progress-indicator@14.0.0':
     resolution: {integrity: sha512-09JRTuIySxs670Tcy4jVlqCUbyrO+Ad6z3nHnAi8pYl74duco4n/9jTROV0mlFdr9NIFifnd08lKbiFLDmfJGQ==}
@@ -282,6 +297,9 @@ packages:
 
   '@material/shape@14.0.0':
     resolution: {integrity: sha512-o0mJB0+feOv473KckI8gFnUo8IQAaEA6ynXzw3VIYFjPi48pJwrxa0mZcJP/OoTXrCbDzDeFJfDPXEmRioBb9A==}
+
+  '@material/textfield@14.0.0':
+    resolution: {integrity: sha512-HGbtAlvlIB2vWBq85yw5wQeeP3Kndl6Z0TJzQ6piVtcfdl2mPyWhuuVHQRRAOis3rCIaAAaxCQYYTJh8wIi0XQ==}
 
   '@material/theme@14.0.0':
     resolution: {integrity: sha512-6/SENWNIFuXzeHMPHrYwbsXKgkvCtWuzzQ3cUu4UEt3KcQ5YpViazIM6h8ByYKZP8A9d8QpkJ0WGX5btGDcVoA==}
@@ -496,14 +514,26 @@ packages:
   '@smui/common@8.0.0-beta.3':
     resolution: {integrity: sha512-j4XE0cGn1O4PgfAFyemNE6KQicnjOUnSb+gWD52GJntatBEhszz1GdaKUTIF4oxM/V7RW5nSX2xzrilPytLEwg==}
 
+  '@smui/floating-label@8.0.0-beta.3':
+    resolution: {integrity: sha512-lZmvDahjla7JDKspF9tBUq2sFpeaK5R22f2WCQGOmAV39ygV68ZZg7jKcwqDJJlLLflZXDmISmS/O2GTZQRyvg==}
+
   '@smui/icon-button@8.0.0-beta.3':
     resolution: {integrity: sha512-3tT3RHGsGaelfdl8o9lzvcHhg9XiaOFBYjz4cBPhkJIJ01/FBo2x9M/jno37+7Ic8CTffA8cZlQSqtF5P9epKA==}
+
+  '@smui/line-ripple@8.0.0-beta.3':
+    resolution: {integrity: sha512-hnrLfyw6D7b8pBnd0Lcq+xVFTzAkAhL4D/hqzWhaA62PZmMGzpiju2/7CsTo80qfWqjHU43ku/C+2b4DMSFWMg==}
 
   '@smui/linear-progress@8.0.0-beta.3':
     resolution: {integrity: sha512-Vty0o1JanOcO0NDOBty+KVzmXv2UVWOiLJZ8RGhDWDBLlNkyqxUXvRS8KUhuT9YdGeSckU2Lvf7efqeCSm13ZQ==}
 
+  '@smui/notched-outline@8.0.0-beta.3':
+    resolution: {integrity: sha512-l4n6b/VlQX51STktWi4sRk4wY3uhKe7XVAj7SO8yb1235djEucifKXsPnk49sKlPOUW5xUJVmn1VLKIhEAlFJA==}
+
   '@smui/ripple@8.0.0-beta.3':
     resolution: {integrity: sha512-4CCrNNuj7a0DD4LmR1SRT9TsDyP529bbbIzS3C3f0fcJvH5cQfvGjf/jkcz0nK2alMqbCKA3CEC3SZ3D9o3bRg==}
+
+  '@smui/textfield@8.0.0-beta.3':
+    resolution: {integrity: sha512-+82oCsIvp/mOp7yi4J/lE+U040fWFXDaoo0aGoYurePhzlX8LIoEupAfIeQ56EBfkDwwW9ZkDpkfsFUc1oYU8A==}
 
   '@sveltejs/acorn-typescript@1.0.5':
     resolution: {integrity: sha512-IwQk4yfwLdibDlrXVE04jTZYlLnwsTT2PIOQQGNLWfjavGifnk1JD1LcZjZaBTRcxZu2FfPfNLOE04DSu9lqtQ==}
@@ -816,6 +846,9 @@ packages:
       svelte: ^4.0.0 || ^5.0.0-next.0
       typescript: '>=5.0.0'
 
+  svelte-routing@2.13.0:
+    resolution: {integrity: sha512-/NTxqTwLc7Dq306hARJrH2HLXOBtKd7hu8nxgoFDlK0AC4SOKnzisiX/9m8Uksei1QAWtlAEdF91YphNM8iDMg==}
+
   svelte@5.28.2:
     resolution: {integrity: sha512-FbWBxgWOpQfhKvoGJv/TFwzqb4EhJbwCD17dB0tEpQiw1XyUEKZJtgm4nA4xq3LLsMo7hu5UY/BOFmroAxKTMg==}
     engines: {node: '>=18'}
@@ -1089,6 +1122,17 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  '@material/floating-label@14.0.0':
+    dependencies:
+      '@material/animation': 14.0.0
+      '@material/base': 14.0.0
+      '@material/dom': 14.0.0
+      '@material/feature-targeting': 14.0.0
+      '@material/rtl': 14.0.0
+      '@material/theme': 14.0.0
+      '@material/typography': 14.0.0
+      tslib: 2.8.1
+
   '@material/focus-ring@14.0.0':
     dependencies:
       '@material/dom': 14.0.0
@@ -1109,6 +1153,14 @@ snapshots:
       '@material/touch-target': 14.0.0
       tslib: 2.8.1
 
+  '@material/line-ripple@14.0.0':
+    dependencies:
+      '@material/animation': 14.0.0
+      '@material/base': 14.0.0
+      '@material/feature-targeting': 14.0.0
+      '@material/theme': 14.0.0
+      tslib: 2.8.1
+
   '@material/linear-progress@14.0.0':
     dependencies:
       '@material/animation': 14.0.0
@@ -1117,6 +1169,16 @@ snapshots:
       '@material/feature-targeting': 14.0.0
       '@material/progress-indicator': 14.0.0
       '@material/rtl': 14.0.0
+      '@material/theme': 14.0.0
+      tslib: 2.8.1
+
+  '@material/notched-outline@14.0.0':
+    dependencies:
+      '@material/base': 14.0.0
+      '@material/feature-targeting': 14.0.0
+      '@material/floating-label': 14.0.0
+      '@material/rtl': 14.0.0
+      '@material/shape': 14.0.0
       '@material/theme': 14.0.0
       tslib: 2.8.1
 
@@ -1144,6 +1206,24 @@ snapshots:
       '@material/feature-targeting': 14.0.0
       '@material/rtl': 14.0.0
       '@material/theme': 14.0.0
+      tslib: 2.8.1
+
+  '@material/textfield@14.0.0':
+    dependencies:
+      '@material/animation': 14.0.0
+      '@material/base': 14.0.0
+      '@material/density': 14.0.0
+      '@material/dom': 14.0.0
+      '@material/feature-targeting': 14.0.0
+      '@material/floating-label': 14.0.0
+      '@material/line-ripple': 14.0.0
+      '@material/notched-outline': 14.0.0
+      '@material/ripple': 14.0.0
+      '@material/rtl': 14.0.0
+      '@material/shape': 14.0.0
+      '@material/theme': 14.0.0
+      '@material/tokens': 14.0.0
+      '@material/typography': 14.0.0
       tslib: 2.8.1
 
   '@material/theme@14.0.0':
@@ -1321,6 +1401,11 @@ snapshots:
     dependencies:
       '@material/dom': 14.0.0
 
+  '@smui/floating-label@8.0.0-beta.3':
+    dependencies:
+      '@material/floating-label': 14.0.0
+      '@smui/common': 8.0.0-beta.3
+
   '@smui/icon-button@8.0.0-beta.3':
     dependencies:
       '@material/density': 14.0.0
@@ -1328,16 +1413,40 @@ snapshots:
       '@smui/common': 8.0.0-beta.3
       '@smui/ripple': 8.0.0-beta.3
 
+  '@smui/line-ripple@8.0.0-beta.3':
+    dependencies:
+      '@material/line-ripple': 14.0.0
+      '@smui/common': 8.0.0-beta.3
+
   '@smui/linear-progress@8.0.0-beta.3':
     dependencies:
       '@material/linear-progress': 14.0.0
       '@smui/common': 8.0.0-beta.3
+
+  '@smui/notched-outline@8.0.0-beta.3':
+    dependencies:
+      '@material/notched-outline': 14.0.0
+      '@smui/common': 8.0.0-beta.3
+      '@smui/floating-label': 8.0.0-beta.3
 
   '@smui/ripple@8.0.0-beta.3':
     dependencies:
       '@material/dom': 14.0.0
       '@material/ripple': 14.0.0
       '@smui/common': 8.0.0-beta.3
+
+  '@smui/textfield@8.0.0-beta.3':
+    dependencies:
+      '@material/dom': 14.0.0
+      '@material/feature-targeting': 14.0.0
+      '@material/ripple': 14.0.0
+      '@material/rtl': 14.0.0
+      '@material/textfield': 14.0.0
+      '@smui/common': 8.0.0-beta.3
+      '@smui/floating-label': 8.0.0-beta.3
+      '@smui/line-ripple': 8.0.0-beta.3
+      '@smui/notched-outline': 8.0.0-beta.3
+      '@smui/ripple': 8.0.0-beta.3
 
   '@sveltejs/acorn-typescript@1.0.5(acorn@8.14.1)':
     dependencies:
@@ -1665,6 +1774,8 @@ snapshots:
       typescript: 5.7.3
     transitivePeerDependencies:
       - picomatch
+
+  svelte-routing@2.13.0: {}
 
   svelte@5.28.2:
     dependencies:

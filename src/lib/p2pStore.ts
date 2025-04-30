@@ -107,7 +107,7 @@ const subscribeToTimerChanges = () => {
 // --- Core P2P Functions ---
 
 // Function to initialize PeerJS as a host
-export const initializeHost = () => {
+export const initializeHost = (sessionId?: string) => {
   p2pState.update((state) => ({
     ...state,
     isConnecting: true,
@@ -123,7 +123,14 @@ export const initializeHost = () => {
     localPeer.destroy();
   }
 
-  localPeer = new Peer("", { debug: 2 });
+  // Use provided sessionId or let PeerJS generate one
+  console.log(
+    `Initializing PeerJS host with ID: ${sessionId ?? "(auto-generated)"}`
+  );
+  // Pass sessionId only if it's a non-empty string, otherwise let PeerJS handle it (defaults to undefined/auto-generate)
+  localPeer = sessionId
+    ? new Peer(sessionId, { debug: 2 })
+    : new Peer({ debug: 2 });
 
   localPeer.on("open", (id) => {
     console.info("Host PeerJS ID is:", id);
@@ -289,6 +296,8 @@ export const connectToHost = (hostId: string) => {
     localPeer.destroy();
   }
 
+  // Client always uses auto-generated ID, but connects to specific hostId
+  console.log(`Initializing PeerJS client to connect to host ID: ${hostId}`);
   localPeer = new Peer("", { debug: 2 });
 
   localPeer.on("open", (id) => {
@@ -351,21 +360,33 @@ export const connectToHost = (hostId: string) => {
   // Handle errors for the client peer instance itself
   localPeer.on("error", (err) => {
     console.error("Client PeerJS error:", err);
-    // Update state explicitly, clearing potentially problematic fields
-    p2pState.update((/*currentState*/) => ({
-      // ...currentState, // Avoid spreading potentially invalid state
-      ...initialState, // Start from initial state
+    const errorMessage = err.message || "Unknown PeerJS error";
+    const isPeerUnavailableError = errorMessage.includes(
+      "Could not connect to peer"
+    );
+
+    p2pState.update((state) => ({
+      // Preserve existing state if possible, especially the error for peer unavailable
+      ...state,
       isConnecting: false,
       isConnected: false,
-      error: err.message || "Unknown PeerJS error",
-      // Ensure peer, myId, and connections are cleared if error occurs before connection
-      peer: null,
-      myId: null,
-      connections: {},
+      // Keep the error if it's the specific one we handle, otherwise use the new one
+      error: isPeerUnavailableError
+        ? state.error || errorMessage
+        : errorMessage,
+      // Clear peer/ID only if it's not the peer unavailable error or if they were never set
+      peer: isPeerUnavailableError ? state.peer : null,
+      myId: isPeerUnavailableError ? state.myId : null,
+      connections: isPeerUnavailableError ? state.connections : {},
     }));
-    if (localPeer && !localPeer.destroyed) {
-      localPeer.destroy();
-    } else {
+
+    // Destroy the peer only if it's NOT the specific "Could not connect" error
+    // We want that peer instance to potentially close gracefully without clearing the error state fully
+    if (!isPeerUnavailableError && localPeer && !localPeer.destroyed) {
+      console.log("Destroying client peer due to non-peer-unavailable error.");
+      localPeer.destroy(); // This should trigger 'close'
+    } else if (!isPeerUnavailableError) {
+      // Ensure localPeer is nullified if it was already destroyed or never existed
       localPeer = null;
     }
   });
@@ -374,20 +395,46 @@ export const connectToHost = (hostId: string) => {
     console.warn(
       "Client disconnected from PeerJS server. Attempting to reconnect..."
     );
-    p2pState.update((state) => ({
-      ...state,
-      isConnected: false,
-      isConnecting: true,
-    }));
-    // No need to reset timer here, wait for potential reconnect or close
-    localPeer?.reconnect();
+    // Only update state if not already showing the peer unavailable error
+    const currentState = get(p2pState);
+    if (!currentState.error?.includes("Could not connect to peer")) {
+      p2pState.update((state) => ({
+        ...state,
+        isConnected: false,
+        isConnecting: true,
+      }));
+      localPeer?.reconnect();
+    } else {
+      console.log(
+        "Skipping reconnect attempt because peer unavailable error is active."
+      );
+    }
   });
 
   localPeer.on("close", () => {
     console.warn("Client Peer instance closed completely.");
-    p2pState.update((state) => ({ ...initialState }));
-    localPeer = null;
-    // Timer is reset via initial state update
+    // Only reset to initial state if we are NOT currently showing the peer unavailable error
+    const currentState = get(p2pState);
+    if (!currentState.error?.includes("Could not connect to peer")) {
+      console.log(
+        "Resetting state to initial due to peer close (non-peer-unavailable)."
+      );
+      p2pState.update((state) => ({ ...initialState }));
+      localPeer = null;
+    } else {
+      // If peer unavailable error is active, just ensure localPeer ref is cleared
+      // but leave the rest of the state (including the error) intact
+      console.log(
+        "Peer closed, but keeping state due to active peer unavailable error."
+      );
+      localPeer = null;
+      // We might want to set isConnecting false here if the reconnect didn't happen
+      p2pState.update((state) => ({
+        ...state,
+        isConnecting: false,
+        peer: null,
+      }));
+    }
   });
 };
 
