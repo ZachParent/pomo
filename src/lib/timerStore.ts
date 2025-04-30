@@ -60,7 +60,7 @@ export const tick = () => {
     if (newTimeLeft <= 0) {
       // Timer finished, transition to next phase
       newState.justFinished = true; // Signal that the timer just finished
-      newState.isRunning = false; // Stop timer
+      // newState.isRunning = false; // Stop timer (will be set based on next phase)
 
       // Determine next phase
       let nextPhase: TimerPhase;
@@ -88,8 +88,13 @@ export const tick = () => {
       newState.timeLeft = nextTimeLeft;
       newState.cycleCount = nextCycleCount;
 
+      // Set isRunning based on the *next* phase
+      newState.isRunning =
+        nextPhase === TimerPhase.ShortBreak ||
+        nextPhase === TimerPhase.LongBreak;
+
       console.log(
-        `Timer finished. Transitioning to ${newState.phase}. Cycle count: ${newState.cycleCount}`
+        `Timer finished. Transitioning to ${newState.phase}. Auto-starting: ${newState.isRunning}. Cycle count: ${newState.cycleCount}`
       );
     }
     // No need to explicitly set justFinished = false here,

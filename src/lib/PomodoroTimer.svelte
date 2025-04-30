@@ -57,11 +57,11 @@
 
     // Reactive statement to trigger effects when timer finishes
     $: if (state.justFinished) {
-        console.log("Timer finished! Triggering alert and sound.");
+        console.log("Timer finished! Triggering sound.");
         // Play sound
         playSound();
-        // Show alert
-        alert(`${state.phase} finished!`);
+        // Show alert - REMOVED as it blocks execution
+        // alert(`${state.phase} finished!`);
     }
 
     // Function to play the sound (now simpler)
