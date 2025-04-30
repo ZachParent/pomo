@@ -1,25 +1,68 @@
-@use 'sass:color';
+@use "sass:color";
 
-@use '@material/theme/color-palette';
+@use "@material/theme/color-palette";
+@use "@material/theme/index" as theme;
+@use "./_dark-vars.scss" as dark;
 
-// Svelte Colors! (Dark Theme)
-@use '@material/theme/index' as theme with (
-  $primary: #ff3e00,
-  $secondary: color.scale(#676778, $whiteness: -10%),
-  $surface: color.adjust(color-palette.$grey-900, $blue: +4),
-  $background: #000,
-  $error: color-palette.$red-700
-);
+// Use parent selector (&) which resolves to body.dark when imported
+& {
+  // Override the base CSS variables with dark theme values
+  --app-bg-color: #{dark.$dark-background};
+  --app-surface-color: #{dark.$dark-surface};
+  --app-text-color: #{dark.$dark-on-background};
+  --app-primary-color: #{dark.$dark-primary};
+  --app-secondary-color: #{dark.$dark-secondary};
+  --app-on-primary-color: #{dark.$dark-on-primary};
+  --app-on-secondary-color: #{dark.$dark-on-secondary};
+  --app-on-surface-color: #{dark.$dark-on-surface};
+  --app-error-color: #{dark.$dark-error};
+  --app-on-error-color: #{dark.$dark-on-error};
 
-html,
-body {
-  background-color: #000;
-  color: theme.$on-surface;
-}
+  // --- Specific Dark Mode Overrides ---
 
-a {
-  color: #40b3ff;
-}
-a:visited {
-  color: color.scale(#40b3ff, $lightness: -35%);
+  // Explicitly override link colors for dark mode
+  a {
+    color: color.scale(#40b3ff, $lightness: 15%);
+  }
+  a:visited {
+    color: color.scale(#40b3ff, $lightness: -15%);
+  }
+
+  // SMUI components rely on MDC theme variables.
+  // We still need to override the *MDC variables* here for components to pick them up.
+  // Set them using our main app CSS variables.
+  --mdc-theme-primary: var(--app-primary-color);
+  --mdc-theme-on-primary: var(--app-on-primary-color);
+  --mdc-theme-secondary: var(--app-secondary-color);
+  --mdc-theme-on-secondary: var(--app-on-secondary-color);
+  --mdc-theme-surface: var(--app-surface-color);
+  --mdc-theme-on-surface: var(--app-on-surface-color);
+  --mdc-theme-background: var(--app-bg-color);
+  --mdc-theme-on-background: var(--app-text-color);
+  --mdc-theme-error: var(--app-error-color);
+  --mdc-theme-on-error: var(--app-on-error-color);
+
+  // Specific SMUI/MDC component variable tweaks for dark mode
+  --mdc-text-field-fill-color: #{rgba(dark.$dark-on-surface, 0.04)};
+  --mdc-text-field-ink-color: var(--app-on-surface-color);
+  --mdc-text-field-label-ink-color: #{rgba(dark.$dark-on-surface, 0.6)};
+
+  // Target specific component styles if variables aren't enough
+  // e.g., Status boxes from PomodoroSession
+  .status {
+    background-color: lighten(dark.$dark-background, 5%);
+    color: var(--app-text-color);
+  }
+  .status--connected {
+    background-color: darken(color-palette.$cyan-800, 10%);
+    color: color-palette.$cyan-50;
+  }
+  .status--error {
+    background-color: darken(color-palette.$red-900, 10%);
+    color: color-palette.$red-100;
+  }
+  .status--offer-host {
+    background-color: darken(color-palette.$yellow-800, 5%);
+    color: color-palette.$yellow-50;
+  }
 }

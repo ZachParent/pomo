@@ -1,0 +1,26 @@
+@use "sass:color";
+@use "@material/theme/color-palette";
+
+// Define base light colors needed for scaling directly here
+$light-primary: #ff3e00; // Copied from _smui-theme.scss
+$light-secondary: #676778; // Copied from _smui-theme.scss
+
+// --- Dark Theme Variables ---
+$dark-primary: color.scale(
+  $light-primary,
+  // Use local variable
+  $lightness: 15%
+); // Brighter primary
+$dark-secondary: color.scale(
+  $light-secondary,
+  // Use local variable
+  $lightness: 30%
+); // Lighter secondary
+$dark-surface: #1e1e1e;
+$dark-background: #121212;
+$dark-error: color-palette.$red-500; // Lighter error for dark bg
+$dark-on-primary: #000;
+$dark-on-secondary: #000;
+$dark-on-surface: #fff;
+$dark-on-background: #fff;
+$dark-on-error: #000;
