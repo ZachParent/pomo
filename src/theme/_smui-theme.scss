@@ -1,15 +1,17 @@
 @use "sass:color";
+@use "@material/theme/color-palette"; // Needed for status box colors etc.
+@use "./dark/_dark-vars.scss" as dark; // Import dark SASS variables
 
 // REMOVED: @use "@material/theme/color-palette"; - This will be loaded by theme/index
 
 // --- Base Theme Variables (Light) ---
 $light-primary: #ff3e00;
-$light-secondary: #676778;
+$light-secondary: #d6d6dd;
 $light-surface: #fff;
 $light-background: #f8f8f8; // Slightly off-white background
 $light-error: #d32f2f; // Use a default red, as $red-900 might not be available directly
 
-// Svelte Colors! - Only configure base colors
+// Svelte Colors! - Configure base light theme
 @use "@material/theme/index" as theme with (
   $primary: $light-primary,
   $secondary: $light-secondary,
@@ -21,19 +23,33 @@ $light-error: #d32f2f; // Use a default red, as $red-900 might not be available 
 // --- Global Styles using Theme Variables ---
 html,
 body {
-  // Use CSS variables for easy switching
-  --app-bg-color: #{theme.$background};
-  --app-surface-color: #{theme.$surface};
-  --app-primary-color: #{theme.$primary};
-  --app-secondary-color: #{theme.$secondary};
-  --app-error-color: #{theme.$error};
+  // Explicitly set the standard MDC variables for the base (light) theme
+  --mdc-theme-primary: #{theme.$primary};
+  --mdc-theme-secondary: #{theme.$secondary};
+  --mdc-theme-surface: #{theme.$surface};
+  --mdc-theme-background: #{theme.$background};
+  --mdc-theme-error: #{theme.$error};
+  // Explicitly set the on-* colors for the light theme
+  --mdc-theme-on-primary: #ffffff; // White text on primary color
+  --mdc-theme-on-secondary: #000000; // Black text on light secondary color (#d6d6dd)
+  --mdc-theme-on-surface: #212121; // Dark grey text on light surface/background
+  --mdc-theme-on-background: #212121; // Dark grey text on light surface/background
+  --mdc-theme-on-error: #ffffff; // White text on error color
 
-  // Read the calculated on-* colors from the standard MDC CSS variables
-  --app-text-color: var(--mdc-theme-on-background, #000); // Fallback for safety
-  --app-on-primary-color: var(--mdc-theme-on-primary, #fff);
-  --app-on-secondary-color: var(--mdc-theme-on-secondary, #fff);
-  --app-on-surface-color: var(--mdc-theme-on-surface, #000);
-  --app-on-error-color: var(--mdc-theme-on-error, #fff);
+  // Define our custom --app-* vars based on the MDC vars
+  // Remove fallbacks as we are now explicitly defining MDC vars above
+  --app-bg-color: var(--mdc-theme-background);
+  --app-surface-color: var(--mdc-theme-surface);
+  --app-primary-color: var(--mdc-theme-primary);
+  --app-secondary-color: var(--mdc-theme-secondary);
+  --app-error-color: var(--mdc-theme-error);
+
+  // For 'on' colors, rely ONLY on the explicitly defined MDC variables
+  --app-text-color: var(--mdc-theme-on-background);
+  --app-on-primary-color: var(--mdc-theme-on-primary);
+  --app-on-secondary-color: var(--mdc-theme-on-secondary);
+  --app-on-surface-color: var(--mdc-theme-on-surface);
+  --app-on-error-color: var(--mdc-theme-on-error);
 
   background-color: var(--app-bg-color);
   color: var(--app-text-color);
@@ -42,8 +58,54 @@ body {
 
 // --- Dark Theme Overrides ---
 body.dark {
-  // Import and apply dark theme overrides using @import
-  @import "./dark/_smui-theme.scss";
+  // REMOVED: @import "./dark/_smui-theme.scss";
+
+  // Directly override the MDC variables using our dark SASS variables
+  --mdc-theme-primary: #{dark.$dark-primary};
+  --mdc-theme-on-primary: #{dark.$dark-on-primary};
+  --mdc-theme-secondary: #{dark.$dark-secondary};
+  --mdc-theme-on-secondary: #{dark.$dark-on-secondary};
+  --mdc-theme-surface: #{dark.$dark-surface};
+  --mdc-theme-on-surface: #{dark.$dark-on-surface};
+  --mdc-theme-background: #{dark.$dark-background};
+  --mdc-theme-on-background: #{dark.$dark-on-background};
+  --mdc-theme-error: #{dark.$dark-error};
+  --mdc-theme-on-error: #{dark.$dark-on-error};
+
+  // REMOVED Redundant mapping: The --app-* variables defined in html, body
+  // will automatically inherit the overridden dark --mdc-theme-* values.
+
+  // --- Specific Dark Mode Overrides (Copied from dark/_smui-theme.scss) ---
+  a {
+    color: color.scale(#40b3ff, $lightness: 15%);
+  }
+  a:visited {
+    color: color.scale(#40b3ff, $lightness: -15%);
+  }
+
+  // Specific SMUI/MDC component variable tweaks for dark mode
+  --mdc-text-field-fill-color: #{rgba(dark.$dark-on-surface, 0.04)};
+  --mdc-text-field-ink-color: var(--app-on-surface-color);
+  --mdc-text-field-label-ink-color: #{rgba(dark.$dark-on-surface, 0.6)};
+
+  // Target specific component styles if variables aren't enough
+  // e.g., Status boxes from PomodoroSession
+  .status {
+    background-color: lighten(dark.$dark-background, 5%);
+    color: var(--app-text-color);
+  }
+  .status--connected {
+    background-color: darken(color-palette.$cyan-800, 10%);
+    color: color-palette.$cyan-50;
+  }
+  .status--error {
+    background-color: darken(color-palette.$red-900, 10%);
+    color: color-palette.$red-100;
+  }
+  .status--offer-host {
+    background-color: darken(color-palette.$yellow-800, 5%);
+    color: color-palette.$yellow-50;
+  }
 }
 
 // --- General Styles (using original theme vars or CSS vars) ---
@@ -51,6 +113,9 @@ a {
   color: var(--app-primary-color);
 }
 a:visited {
-  // Use theme's primary for calculation
-  color: color.scale(theme.$primary, $lightness: -35%);
+  // Use theme's primary for calculation OR use --app-primary-color
+  color: color.scale(
+    theme.$primary,
+    $lightness: -35%
+  ); // Keep original light visited color logic
 }
