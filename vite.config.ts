@@ -7,7 +7,7 @@ import { fileURLToPath } from "url"; // Import the helper
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const base = process.env.NODE_ENV === "production" ? "/pomo" : "/";
+const base = process.env.NODE_ENV === "production" ? "/pomo" : "/pomo";
 
 // https://vitejs.dev/config/
 export default defineConfig({

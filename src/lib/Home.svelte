@@ -5,6 +5,8 @@
   import Textfield from "@smui/textfield";
   import HelperText from "@smui/textfield/helper-text";
 
+  const base_url = import.meta.env.BASE_URL;
+
   let roomName = "";
   let roomNameInvalid = false;
 
@@ -13,7 +15,7 @@
     if (roomName) {
       roomNameInvalid = false;
       // Navigate to the session page with the entered room name
-      navigate(`/session/${encodeURIComponent(roomName)}`, { replace: true });
+      navigate(`${base_url}/session/${encodeURIComponent(roomName)}`, { replace: true });
     } else {
       roomNameInvalid = true;
     }

@@ -29,13 +29,14 @@
 
     // --- Alert and Sound Effect ---
     let audioPlayer: HTMLAudioElement | null = null;
+    const base_url = import.meta.env.BASE_URL;
 
     // Initialize Audio on Mount
     onMount(() => {
          console.log("PomodoroTimer mounted, initializing audio...");
          try {
             // Use the path provided by the user
-            audioPlayer = new Audio('/chime-alert.mp3');
+            audioPlayer = new Audio(`${base_url}/chime-alert.mp3`);
             // Optional: Preload the audio metadata/data
             audioPlayer.preload = 'auto'; 
 

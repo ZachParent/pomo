@@ -26,6 +26,8 @@
 
   const CONNECTION_TIMEOUT_MS = 3000; // 3 seconds
 
+  const base_url = import.meta.env.BASE_URL;
+
   // Function to clear the connection timeout
   function clearConnectionTimeout() {
     if (connectionTimeoutId) {
@@ -82,7 +84,7 @@
 
       // Update session link if hosting
       if (state.isHost && state.myId === effectiveSessionId) {
-        sessionLink = `${window.location.origin}/session/${encodeURIComponent(roomName)}`;
+        sessionLink = `${window.location.origin}${base_url}/session/${encodeURIComponent(roomName)}`;
         clearConnectionTimeout(); // Clear timeout if we become host
         connectionTimedOut = false; // Reset timeout flag
       } else {
@@ -190,7 +192,7 @@
       clearConnectionTimeout(); // Clear timeout on leaving
       disconnectPeer();
       // Navigate back to the home page
-      navigate('/', { replace: true });
+      navigate(base_url, { replace: true });
   }
 
 </script>
