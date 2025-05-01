@@ -22,8 +22,8 @@ export interface TimerState {
 }
 
 // Initial State Configuration
-const DEFAULT_WORK_DURATION = 5; // 25 minutes
-const DEFAULT_SHORT_BREAK_DURATION = 5; // 5 minutes
+const DEFAULT_WORK_DURATION = 25 * 60; // 25 minutes
+const DEFAULT_SHORT_BREAK_DURATION = 5 * 60; // 5 minutes
 const DEFAULT_LONG_BREAK_DURATION = 15 * 60; // 15 minutes
 const DEFAULT_LONG_BREAK_INTERVAL = 4;
 
