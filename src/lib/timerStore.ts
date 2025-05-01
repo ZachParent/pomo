@@ -169,6 +169,47 @@ export const resetTimer = () => {
   }));
 };
 
+/** Sets the current cycle count and the long break interval. */
+export const setCycleInfo = (
+  newCycleCount: number,
+  newLongBreakInterval: number
+) => {
+  timerState.update((state) => {
+    // Validate inputs
+    const cycleCount = Math.max(0, Math.floor(newCycleCount));
+    const longBreakInterval = Math.max(1, Math.floor(newLongBreakInterval)); // Interval must be at least 1
+
+    // Ensure cycleCount does not exceed the new interval (or interval - 1?)
+    // If current cycle is 2/4 and interval becomes 2, maybe reset cycle to 0?
+    // Let's clamp cycleCount to be less than longBreakInterval for simplicity.
+    const clampedCycleCount = Math.min(cycleCount, longBreakInterval - 1);
+
+    return {
+      ...state,
+      cycleCount: clampedCycleCount,
+      longBreakInterval: longBreakInterval,
+      justFinished: false, // Ensure flag is reset on manual change
+    };
+  });
+};
+
+/** Sets the time left directly. */
+export const setTimeLeft = (newTimeLeft: number) => {
+  timerState.update((state) => {
+    // Validate input - ensure it's a non-negative number of seconds
+    const validatedTimeLeft = Math.max(0, Math.floor(newTimeLeft));
+
+    // Should we pause the timer when setting time manually? Let's not for now.
+    // Should we reset the phase? Let's not for now.
+    // Just update the time and reset the 'justFinished' flag.
+    return {
+      ...state,
+      timeLeft: validatedTimeLeft,
+      justFinished: false,
+    };
+  });
+};
+
 /** Sets the entire timer state. Used by clients receiving updates. */
 export const setTimerState = (newState: TimerState) => {
   // When receiving state from others, assume it's not 'just finished'

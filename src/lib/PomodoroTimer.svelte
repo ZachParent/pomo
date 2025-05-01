@@ -4,14 +4,71 @@
     import Button from '@smui/button';
     import LinearProgress from '@smui/linear-progress';
     import { onDestroy, onMount } from 'svelte'; // Import onMount
+    import Dialog, { Title, Content as DialogContent, Actions } from '@smui/dialog';
+    import Textfield from '@smui/textfield';
+    import HelperText from '@smui/textfield/helper-text'; // Import HelperText
 
     // Import the shared timer state and phase enum
     import { timerState, TimerPhase } from './timerStore';
     // Import P2P action request functions
-    import { requestStartTimer, requestPauseTimer, requestResetTimer } from './p2pStore';
+    import {
+        requestStartTimer,
+        requestPauseTimer,
+        requestResetTimer,
+        requestSetCycleInfo,
+        requestSetTimeLeft
+    } from './p2pStore';
 
     // --- Reactive State (derived from store) ---
     $: state = $timerState; // Convenience alias
+
+    // --- Edit Cycle Dialog State ---
+    let editCycleDialogOpen = false;
+    let editCycleCount: number = 0;
+    let editLongBreakInterval: number = 4;
+
+    // Function to open the edit dialog and initialize values
+    function openEditCycleDialog() {
+        editCycleCount = state.cycleCount;
+        editLongBreakInterval = state.longBreakInterval;
+        editCycleDialogOpen = true;
+    }
+
+    // Function to handle saving the cycle changes
+    function handleSaveCycleChanges() {
+        console.log(`Saving changes: Cycle Count = ${editCycleCount}, Interval = ${editLongBreakInterval}`);
+        const cycleCountNum = Number(editCycleCount);
+        const intervalNum = Number(editLongBreakInterval);
+        if (!isNaN(cycleCountNum) && !isNaN(intervalNum)) {
+            requestSetCycleInfo(cycleCountNum, intervalNum);
+        }
+        editCycleDialogOpen = false;
+    }
+
+    // --- Edit Time Dialog State ---
+    let editTimeDialogOpen = false;
+    let editMinutes: number = 0;
+    let editSeconds: number = 0;
+
+    // Function to open the edit time dialog and initialize values
+    function openEditTimeDialog() {
+        const currentTotalSeconds = state.timeLeft;
+        editMinutes = Math.floor(currentTotalSeconds / 60);
+        editSeconds = currentTotalSeconds % 60;
+        editTimeDialogOpen = true;
+    }
+
+    // Function to handle saving the time changes
+    function handleSaveTimeChanges() {
+        const minutesNum = Number(editMinutes);
+        const secondsNum = Number(editSeconds);
+        if (!isNaN(minutesNum) && !isNaN(secondsNum)) {
+            const newTotalSeconds = (minutesNum * 60) + secondsNum;
+            console.log(`Saving time changes: Total Seconds = ${newTotalSeconds}`);
+            requestSetTimeLeft(newTotalSeconds);
+        }
+        editTimeDialogOpen = false;
+    }
 
     // --- Derived State (calculations based on store) ---
     $: currentDuration = (
@@ -110,7 +167,12 @@
 
 <Card padded class="pomodoro-card">
     <div class="status">{state.phase} {state.isRunning ? '(Running)' : '(Paused)'}</div>
-    <div class="timer-display">{formattedTime}</div>
+    <!-- Make timer display clickable -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="timer-display" onclick={openEditTimeDialog} role="button" tabindex="0" title="Click to edit time remaining">
+        {formattedTime}
+        <span style="font-size: 0.4em; vertical-align: middle; opacity: 0.7;"> (edit)</span>
+    </div>
     <LinearProgress progress={clampedProgress} buffer={1} closed={!state.isRunning} />
     <Content class="mdc-typography--body2 controls">
         {#if !state.isRunning}
@@ -128,10 +190,81 @@
             Reset
         </Button>
     </Content>
-    <div class="cycle-info">
+    <!-- Make cycle info clickable -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="cycle-info" onclick={openEditCycleDialog} title="Click to edit cycles" role="button" tabindex="0" aria-label="Click to edit cycles">
         Cycles Completed: {state.cycleCount} / {state.longBreakInterval}
+        <span style="font-size: 0.8em; opacity: 0.7;"> (edit)</span>
     </div>
 </Card>
+
+<!-- Edit Time Dialog -->
+<Dialog
+  bind:open={editTimeDialogOpen}
+  aria-labelledby="edit-time-title"
+  aria-describedby="edit-time-content"
+>
+  <Title id="edit-time-title">Edit Time Remaining</Title>
+  <DialogContent id="edit-time-content" class="time-edit-content" style="display: grid; grid-template-columns: 1fr 0.1fr 1fr; align-items: center; justify-content: center; min-height: 200px; min-width: 400px;">
+     <Textfield
+        bind:value={editMinutes}
+        label="Minutes"
+        type="number"
+        input$min="0"
+        input$step="1"
+      />
+      <span class="time-separator">:</span>
+      <Textfield
+        bind:value={editSeconds}
+        label="Seconds"
+        type="number"
+        input$min="0"
+        input$max="59"
+        input$step="1"
+      />
+  </DialogContent>
+  <Actions>
+    <Button onclick={() => editTimeDialogOpen = false}>Cancel</Button>
+    <Button onclick={handleSaveTimeChanges} variant="raised">Save</Button>
+  </Actions>
+</Dialog>
+
+<!-- Edit Cycle Info Dialog -->
+<Dialog
+  bind:open={editCycleDialogOpen}
+  aria-labelledby="edit-cycle-title"
+  aria-describedby="edit-cycle-content"
+>
+  <Title id="edit-cycle-title">Edit Cycle Information</Title>
+  <DialogContent id="edit-cycle-content">
+    <Textfield
+      bind:value={editCycleCount}
+      label="Current Cycle (Completed)"
+      type="number"
+      input$min="0"
+      input$step="1"
+      style="width: 100%; margin-bottom: 1em;"
+    >
+      <!-- Use HelperText component for persistent text -->
+      <HelperText persistent slot="helper">Number of work cycles completed in the current sequence.</HelperText>
+    </Textfield>
+    <Textfield
+      bind:value={editLongBreakInterval}
+      label="Cycles Before Long Break"
+      type="number"
+      input$min="1" 
+      input$step="1"
+      style="width: 100%;"
+    >
+      <!-- Use HelperText component for persistent text -->
+      <HelperText persistent slot="helper">How many work cycles until a long break starts. Must be at least 1.</HelperText>
+    </Textfield>
+  </DialogContent>
+  <Actions>
+    <Button onclick={() => editCycleDialogOpen = false}>Cancel</Button>
+    <Button onclick={handleSaveCycleChanges} variant="raised">Save</Button>
+  </Actions>
+</Dialog>
 
 <style lang="scss">
     .pomodoro-card {
@@ -152,6 +285,15 @@
         font-weight: bold;
         margin-bottom: 0.2em;
         font-family: 'Roboto Mono', monospace; // Use monospace for stable width
+        cursor: pointer; // Make it clickable
+        padding: 5px 0; // Add some padding for easier clicking
+        border-radius: 4px; // Slightly rounded corners
+        transition: background-color 0.2s ease-in-out;
+        display: inline-block; // Prevent full width block
+
+        &:hover {
+            background-color: rgba(0, 0, 0, 0.05); // Subtle hover effect
+        }
     }
 
     .controls {
@@ -167,9 +309,30 @@
         margin-top: 1em;
     }
 
+    .time-edit-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .time-separator {
+        font-size: 2em;
+        font-weight: bold;
+        margin: 0 5px;
+        line-height: 1; // Adjust vertical alignment if needed
+    }
+
     .cycle-info {
         margin-top: 1em;
         font-size: 0.9em;
+        cursor: pointer; // Add cursor pointer to indicate it's clickable
+        padding: 5px; // Add some padding for easier clicking
+        border-radius: 4px; // Slightly rounded corners
+        transition: background-color 0.2s ease-in-out;
+
+        &:hover {
+            background-color: rgba(0, 0, 0, 0.05); // Subtle hover effect
+        }
     }
 
     // Media Query for smaller screens

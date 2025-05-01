@@ -29,6 +29,9 @@ importers:
       '@smui/common':
         specifier: 8.0.0-beta.3
         version: 8.0.0-beta.3
+      '@smui/dialog':
+        specifier: 8.0.0-beta.3
+        version: 8.0.0-beta.3
       '@smui/icon-button':
         specifier: 8.0.0-beta.3
         version: 8.0.0-beta.3

@@ -12,6 +12,8 @@ import {
   pauseTimer,
   resetTimer,
   setTimerState,
+  setCycleInfo,
+  setTimeLeft,
 } from "./timerStore";
 
 interface P2PState {
@@ -45,7 +47,12 @@ let timerStateUnsubscribe: (() => void) | null = null; // To unsubscribe from ti
 type TimerActionRequest =
   | { type: "REQUEST_START" }
   | { type: "REQUEST_PAUSE" }
-  | { type: "REQUEST_RESET" };
+  | { type: "REQUEST_RESET" }
+  | {
+      type: "REQUEST_SET_CYCLE_INFO";
+      payload: { cycleCount: number; longBreakInterval: number };
+    }
+  | { type: "REQUEST_SET_TIME_LEFT"; payload: { timeLeft: number } };
 
 type TimerStateBroadcast = {
   type: "STATE_UPDATE";
@@ -198,6 +205,40 @@ export const initializeHost = (sessionId?: string) => {
               resetTimer(); // Update host state
               stopHostInterval(); // Stop ticking
               // State change will trigger broadcast via subscription
+              break;
+            case "REQUEST_SET_CYCLE_INFO":
+              console.log(
+                `Host received REQUEST_SET_CYCLE_INFO from ${conn.peer}`
+              );
+              if (message.payload) {
+                setCycleInfo(
+                  message.payload.cycleCount,
+                  message.payload.longBreakInterval
+                );
+                // State change will trigger broadcast via subscription
+              } else {
+                console.warn(
+                  "Received REQUEST_SET_CYCLE_INFO without payload from",
+                  conn.peer
+                );
+              }
+              break;
+            case "REQUEST_SET_TIME_LEFT":
+              console.log(
+                `Host received REQUEST_SET_TIME_LEFT from ${conn.peer}`
+              );
+              if (
+                message.payload &&
+                typeof message.payload.timeLeft === "number"
+              ) {
+                setTimeLeft(message.payload.timeLeft);
+                // State change will trigger broadcast via subscription
+              } else {
+                console.warn(
+                  "Received REQUEST_SET_TIME_LEFT without valid payload from",
+                  conn.peer
+                );
+              }
               break;
           }
         }
@@ -554,6 +595,25 @@ const sendActionRequest = (request: TimerActionRequest) => {
         resetTimer();
         stopHostInterval();
         break;
+      case "REQUEST_SET_CYCLE_INFO":
+        if (request.payload) {
+          setCycleInfo(
+            request.payload.cycleCount,
+            request.payload.longBreakInterval
+          );
+        } else {
+          console.warn("Host attempted to set cycle info without payload.");
+        }
+        break;
+      case "REQUEST_SET_TIME_LEFT":
+        if (request.payload && typeof request.payload.timeLeft === "number") {
+          setTimeLeft(request.payload.timeLeft);
+        } else {
+          console.warn(
+            "Host attempted to set time left without valid payload."
+          );
+        }
+        break;
     }
   } else {
     // Client sends request to host
@@ -574,3 +634,16 @@ export const requestPauseTimer = () =>
   sendActionRequest({ type: "REQUEST_PAUSE" });
 export const requestResetTimer = () =>
   sendActionRequest({ type: "REQUEST_RESET" });
+export const requestSetCycleInfo = (
+  cycleCount: number,
+  longBreakInterval: number
+) => {
+  sendActionRequest({
+    type: "REQUEST_SET_CYCLE_INFO",
+    payload: { cycleCount, longBreakInterval },
+  });
+};
+
+export const requestSetTimeLeft = (timeLeft: number) => {
+  sendActionRequest({ type: "REQUEST_SET_TIME_LEFT", payload: { timeLeft } });
+};
