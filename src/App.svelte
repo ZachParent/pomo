@@ -21,6 +21,7 @@
   // Base path for the router, useful if deploying to a subfolder
   // export let url = ""; // Remove this line or comment it out
   const base_url = import.meta.env.BASE_URL; // Get base URL from Vite
+  console.log(base_url);
 
   // Determine which icon to show based on the theme
   $: themeIcon = $theme === 'light' ? mdiWeatherNight : mdiWhiteBalanceSunny;
@@ -41,7 +42,7 @@
   </header>
 
   <main>
-    <Router url={base_url}>
+    <Router basepath={base_url}>
       <Route path="/session/:roomName" let:params>
         <!-- Pass the roomName from the URL param to the component -->
         <PomodoroSession roomName={params.roomName} />
