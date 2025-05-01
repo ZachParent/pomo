@@ -1,6 +1,4 @@
 <script lang="ts">
-  // Import the global SASS theme file
-  import './theme/_smui-theme.scss';
 
   // Import SMUI base typography styles (optional, but recommended)
   import '@material/typography/mdc-typography.scss';
@@ -87,7 +85,7 @@
   .app-header h1 {
     font-size: 1.5rem;
     margin: 0;
-    color: var(--app-primary-color, #ff3e00);
+    color: var(--mdc-theme-primary);
   }
 
   .spacer {
