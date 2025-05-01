@@ -73,13 +73,7 @@
     display: flex;
     align-items: center;
     padding: 0.5em 1em;
-    background-color: var(--app-surface-color, #eee); /* Use CSS var with fallback */
-    border-bottom: 1px solid rgba(0,0,0,0.1);
-    transition: background-color 0.3s;
-  }
-
-  body.dark .app-header {
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+    background-color: var(--mdc-theme-surface);
   }
 
   .app-header h1 {
@@ -92,15 +86,8 @@
       flex-grow: 1;
   }
 
-  /* Style the theme toggle button */
-  .theme-toggle {
-     /* Use --mdc variables which should be updated by the theme */
-     color: var(--mdc-theme-text-primary-on-background, inherit);
-  }
-
   main {
     flex-grow: 1; /* Allow main content to take up remaining space */
-    padding: 1em;
     max-width: 800px;
     width: 100%; /* Ensure it takes width for centering */
     margin: 0 auto; /* Center main content area */
@@ -113,8 +100,5 @@
     margin: 0 auto;
     font-family: var(--mdc-typography-font-family, Roboto, sans-serif);
   }
-
-  /* Remove component-specific styles that were moved to PomodoroSession.svelte */
-  /* e.g., .status, .status--connected, .status--error */
 
 </style>

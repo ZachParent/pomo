@@ -36,17 +36,39 @@ function getInitialTheme(): Theme {
 const initialTheme = getInitialTheme();
 export const theme = writable<Theme>(initialTheme);
 
-// Function to apply the theme class to the body
+// Function to apply the theme by enabling/disabling <link> tags
 function applyTheme(newTheme: Theme) {
   if (import.meta.env.SSR) return; // Don't run this on the server
 
   console.log("[Theme] Applying theme:", newTheme);
-  if (newTheme === "dark") {
-    document.body.classList.add("dark");
-  } else {
-    document.body.classList.remove("dark");
+
+  const lightThemeLink = document.getElementById(
+    "smui-theme-light"
+  ) as HTMLLinkElement;
+  const darkThemeLink = document.getElementById(
+    "smui-theme-dark"
+  ) as HTMLLinkElement;
+
+  if (!lightThemeLink || !darkThemeLink) {
+    console.error(
+      "[Theme] Could not find theme link tags in the document head."
+    );
+    return;
   }
-  // Persist to localStorage
+
+  if (newTheme === "dark") {
+    // Enable dark theme, disable light theme
+    lightThemeLink.media = "not all";
+    darkThemeLink.media = "all";
+    document.body.classList.add("dark"); // Keep body class for potential custom component styles
+  } else {
+    // Enable light theme, disable dark theme
+    lightThemeLink.media = "all";
+    darkThemeLink.media = "not all";
+    document.body.classList.remove("dark"); // Keep body class consistent
+  }
+
+  // Persist choice to localStorage
   localStorage.setItem(KEY, newTheme);
 }
 

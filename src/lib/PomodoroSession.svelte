@@ -276,8 +276,9 @@
     padding: 8px 12px;
     margin-bottom: 1em;
     border-radius: 4px;
-    background-color: #eee; /* Light background for status */
     border: 1px solid #ddd;
+    color: #000000;
+
   }
 
   .status--connected {

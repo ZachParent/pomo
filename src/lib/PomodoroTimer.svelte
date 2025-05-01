@@ -142,7 +142,6 @@
 
     .status {
         font-size: 1.2em;
-        color: var(--mdc-theme-text-secondary-on-background, rgba(0, 0, 0, 0.6));
         margin-bottom: 0.5em;
         min-height: 1.5em; // Prevent layout shift when (Running)/(Paused) appears
     }
@@ -170,7 +169,6 @@
     .cycle-info {
         margin-top: 1em;
         font-size: 0.9em;
-        color: var(--mdc-theme-text-secondary-on-background, rgba(0, 0, 0, 0.6));
     }
 
     // Media Query for smaller screens
