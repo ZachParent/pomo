@@ -25,7 +25,7 @@
 <div class="container">
   <Card padded style="max-width: 400px; margin: 2rem auto;">
     <Content class="mdc-typography--body1">
-      <h2>Welcome to Pomo!</h2>
+      <h2>Welcome to PomoCollabo!</h2>
       <p>Enter a room name to start or join a collaborative Pomodoro session.</p>
       <form on:submit|preventDefault={handleSubmit}>
         <Textfield
