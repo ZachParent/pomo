@@ -31,7 +31,7 @@
 
 <div class="app-container">
   <header class="app-header">
-    <h1>Collaborative Pomodoro</h1>
+    <h1>PomoCollabo</h1>
     <div class="spacer"></div>
     <!-- @ts-ignore -->
     <IconButton class="theme-toggle" onclick={toggleTheme} aria-label={themeLabel} title={themeLabel}>
