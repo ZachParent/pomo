@@ -1,0 +1,66 @@
+# Testing Strategy
+
+## Goals
+
+1. Verify deterministic timer transitions and cycle behavior.
+2. Verify cross-participant synchronization in real browser flows.
+3. Capture screenshots during automation to validate rendered behavior.
+
+## Test Layers
+
+## Unit Tests
+
+- Framework: Vitest
+- Location: `src/**/*.test.ts`
+- Focus:
+  - phase transitions
+  - long-break interval behavior
+  - timer projection and non-mutating reads
+  - catch-up behavior after long delays
+
+Run:
+
+```bash
+just test-unit
+```
+
+## End-to-End Tests
+
+- Framework: Vitest + Puppeteer
+- Location: `tests/e2e/**/*.e2e.test.ts`
+- Transport mode: `broadcast` (deterministic local sync)
+- Coverage:
+  - host flow from room initialization
+  - no-stall transition from work to break
+  - host/client synchronization in multi-page session
+  - screenshot capture for visual validation
+
+Run:
+
+```bash
+just test-e2e
+```
+
+Screenshots are emitted to:
+
+- `artifacts/screenshots/e2e`
+
+## Autonomous UI Exploration
+
+Script:
+
+```bash
+just explore-ui
+```
+
+This runs a Puppeteer-driven journey and writes screenshots to:
+
+- `artifacts/screenshots/explore`
+
+## Full Verification
+
+```bash
+just verify
+```
+
+This runs lint, type checks, unit tests, e2e tests, and production build.
