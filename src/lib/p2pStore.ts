@@ -1,649 +1,811 @@
-import { writable, get } from "svelte/store";
-// Separate runtime Peer import from type-only DataConnection import
+import { get, writable } from "svelte/store";
 import Peer from "peerjs";
 import type { DataConnection } from "peerjs";
-
-// Import Timer Store
-import type { TimerState } from "./timerStore";
+import type { TimerDurations, TimerState } from "./timerEngine";
 import {
-  timerState,
-  tick,
-  startTimer,
+  getTimerSnapshot,
   pauseTimer,
   resetTimer,
-  setTimerState,
+  resetTimerStore,
   setCycleInfo,
+  setDurations,
   setTimeLeft,
+  setTimerStateFromRemote,
+  startTimer,
+  synchronizeTimer,
+  timerStateEquals,
 } from "./timerStore";
 
+export type TransportMode = "peerjs" | "broadcast";
+
+interface ConnectOptions {
+  mode?: TransportMode;
+  timeoutMs?: number;
+}
+
 interface P2PState {
-  peer: Peer | null;
+  mode: TransportMode;
+  roomId: string | null;
   myId: string | null;
+  hostId: string | null;
   isConnecting: boolean;
   isConnected: boolean;
-  error: string | null;
   isHost: boolean;
-  // Track active connections (primarily for the host)
-  connections: { [peerId: string]: DataConnection };
+  canBecomeHost: boolean;
+  error: string | null;
+  connections: Record<string, DataConnection>;
 }
 
 const initialState: P2PState = {
-  peer: null,
+  mode: "peerjs",
+  roomId: null,
   myId: null,
+  hostId: null,
   isConnecting: false,
   isConnected: false,
-  error: null,
   isHost: false,
+  canBecomeHost: false,
+  error: null,
   connections: {},
 };
 
 export const p2pState = writable<P2PState>(initialState);
 
-let localPeer: Peer | null = null;
-let timerIntervalId: number | null = null; // Store the timer interval ID
-let timerStateUnsubscribe: (() => void) | null = null; // To unsubscribe from timer state changes
-
-// --- Message Types ---
-type TimerActionRequest =
-  | { type: "REQUEST_START" }
-  | { type: "REQUEST_PAUSE" }
-  | { type: "REQUEST_RESET" }
+type TimerActionMessage =
+  | { type: "REQUEST_START"; senderId: string }
+  | { type: "REQUEST_PAUSE"; senderId: string }
+  | { type: "REQUEST_RESET"; senderId: string }
   | {
       type: "REQUEST_SET_CYCLE_INFO";
+      senderId: string;
       payload: { cycleCount: number; longBreakInterval: number };
     }
-  | { type: "REQUEST_SET_TIME_LEFT"; payload: { timeLeft: number } };
+  | {
+      type: "REQUEST_SET_TIME_LEFT";
+      senderId: string;
+      payload: { remainingSeconds: number };
+    }
+  | {
+      type: "REQUEST_SET_DURATIONS";
+      senderId: string;
+      payload: Partial<TimerDurations>;
+    };
 
-type TimerStateBroadcast = {
+type TimerStateMessage = {
   type: "STATE_UPDATE";
-  payload: TimerState; // The full TimerState object
+  senderId: string;
+  payload: TimerState;
 };
 
-type P2PMessage = TimerActionRequest | TimerStateBroadcast | string; // Allow simple strings too
+type SessionDiscoveryMessage =
+  | { type: "REQUEST_STATE"; senderId: string }
+  | { type: "HOST_PONG"; senderId: string; hostId: string };
 
-// --- Helper Functions ---
+type SessionMessage = TimerActionMessage | TimerStateMessage | SessionDiscoveryMessage;
 
-/** Broadcasts data to all connected peers (used by host). */
-const broadcast = (data: P2PMessage) => {
-  const state = get(p2pState); // Get current connections
-  if (!state.isHost || !state.peer) return;
+const HOST_HEARTBEAT_MS = 250;
+const DEFAULT_CONNECT_TIMEOUT_MS = 8_000;
 
-  console.log("Broadcasting:", data);
-  Object.values(state.connections).forEach((conn) => {
-    if (conn && conn.open) {
-      conn.send(data);
-    } else {
-      console.warn(
-        `Attempted to broadcast to closed connection: ${conn?.peer}`
-      );
+let runtimeToken = 0;
+let localPeer: Peer | null = null;
+let clientConnection: DataConnection | null = null;
+let hostConnections: Record<string, DataConnection> = {};
+let localChannel: BroadcastChannel | null = null;
+let hostHeartbeatId: number | null = null;
+let connectTimeoutId: number | null = null;
+let lastHostBroadcastMs = 0;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const parseSessionMessage = (value: unknown): SessionMessage | null => {
+  if (!isRecord(value) || typeof value.type !== "string") {
+    return null;
+  }
+
+  return value as SessionMessage;
+};
+
+const makeClientId = (): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `client-${crypto.randomUUID()}`;
+  }
+
+  return `client-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const normalizeError = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  return "Unknown connection error";
+};
+
+const clearConnectTimeout = (): void => {
+  if (connectTimeoutId !== null) {
+    clearTimeout(connectTimeoutId);
+    connectTimeoutId = null;
+  }
+};
+
+const clearHostHeartbeat = (): void => {
+  if (hostHeartbeatId !== null) {
+    clearInterval(hostHeartbeatId);
+    hostHeartbeatId = null;
+  }
+};
+
+const disconnectResources = (): void => {
+  clearConnectTimeout();
+  clearHostHeartbeat();
+
+  if (clientConnection) {
+    try {
+      clientConnection.close();
+    } catch {
+      // Ignore close errors during teardown.
+    }
+    clientConnection = null;
+  }
+
+  Object.values(hostConnections).forEach((connection) => {
+    try {
+      connection.close();
+    } catch {
+      // Ignore close errors during teardown.
     }
   });
-};
+  hostConnections = {};
 
-/** Starts the host's timer interval */
-const startHostInterval = () => {
-  if (timerIntervalId !== null) return; // Already running
-  console.log("Starting host timer interval...");
-  timerIntervalId = window.setInterval(() => {
-    tick(); // Call the tick action from timerStore
-  }, 1000);
-};
-
-/** Stops the host's timer interval */
-const stopHostInterval = () => {
-  if (timerIntervalId !== null) {
-    console.log("Stopping host timer interval...");
-    clearInterval(timerIntervalId);
-    timerIntervalId = null;
-  }
-};
-
-/** Sets up subscription to timerState for broadcasting changes (host only) */
-const subscribeToTimerChanges = () => {
-  if (timerStateUnsubscribe) timerStateUnsubscribe(); // Unsubscribe previous if any
-
-  timerStateUnsubscribe = timerState.subscribe(($timerState) => {
-    // Only broadcast if we are the host
-    const p2p = get(p2pState);
-    if (p2p.isHost && p2p.isConnected) {
-      broadcast({ type: "STATE_UPDATE", payload: $timerState });
+  if (localPeer && !localPeer.destroyed) {
+    try {
+      localPeer.destroy();
+    } catch {
+      // Ignore destroy errors during teardown.
     }
-  });
+  }
+  localPeer = null;
+
+  if (localChannel) {
+    try {
+      localChannel.close();
+    } catch {
+      // Ignore close errors during teardown.
+    }
+  }
+  localChannel = null;
 };
 
-// --- Core P2P Functions ---
-
-// Function to initialize PeerJS as a host
-export const initializeHost = (sessionId?: string) => {
-  console.log("[p2pStore] initializeHost called with sessionId:", sessionId);
-
-  // --- Start Revised Initialization ---
-  // 1. Destroy any existing peer FIRST to trigger its cleanup handlers cleanly.
-  if (localPeer) {
-    console.log(
-      "[p2pStore] Destroying previous localPeer before initializing host."
-    );
-    localPeer.destroy();
-    localPeer = null;
-  }
-
-  // 2. Stop any intervals/subscriptions related to the previous peer.
-  stopHostInterval();
-  if (timerStateUnsubscribe) timerStateUnsubscribe();
-
-  // 3. NOW update the state to definitively reflect the intention to host,
-  //    starting from a clean slate but setting the necessary flags.
-  p2pState.update((state) => ({
-    ...initialState, // Base on initial state
-    isConnecting: true,
-    isHost: true,
-    error: null, // Explicitly clear any previous error
-  }));
-  // --- End Revised Initialization ---
-
-  try {
-    console.log(
-      `[p2pStore] Attempting to create new Peer host with ID: ${
-        sessionId ?? "(auto-generated)"
-      }`
-    );
-    localPeer = sessionId
-      ? new Peer(sessionId, { debug: 2 })
-      : new Peer({ debug: 2 });
-
-    localPeer.on("open", (id) => {
-      console.log("[p2pStore] Host Peer 'open' event fired. ID:", id);
-      p2pState.update((state) => ({
-        ...state,
-        peer: localPeer,
-        myId: id,
-        isConnecting: false,
-        isConnected: true,
-        error: null,
-      }));
-      subscribeToTimerChanges();
-    });
-
-    localPeer.on("connection", (conn) => {
-      console.log(
-        "[p2pStore] Host received 'connection' event from peer:",
-        conn.peer
-      );
-      conn.on("open", () => {
-        console.info("Data connection opened with", conn.peer);
-        // Add connection to state
-        p2pState.update((state) => ({
-          ...state,
-          connections: { ...state.connections, [conn.peer]: conn },
-        }));
-        // Send the current timer state immediately to the new client
-        const currentTimerState = get(timerState);
-        conn.send({ type: "STATE_UPDATE", payload: currentTimerState });
-        conn.send(`Hello from host ${get(p2pState).myId}!`); // Also send hello
-      });
-
-      conn.on("data", (data) => {
-        console.info("Host received data from", conn.peer, ":", data);
-        // Host handles action requests
-        const message = data as P2PMessage;
-        if (typeof message === "object" && message.type) {
-          switch (message.type) {
-            case "REQUEST_START":
-              console.log(`Host received REQUEST_START from ${conn.peer}`);
-              startTimer(); // Update host state
-              startHostInterval(); // Start ticking
-              // State change will trigger broadcast via subscription
-              break;
-            case "REQUEST_PAUSE":
-              console.log(`Host received REQUEST_PAUSE from ${conn.peer}`);
-              pauseTimer(); // Update host state
-              stopHostInterval(); // Stop ticking
-              // State change will trigger broadcast via subscription
-              break;
-            case "REQUEST_RESET":
-              console.log(`Host received REQUEST_RESET from ${conn.peer}`);
-              resetTimer(); // Update host state
-              stopHostInterval(); // Stop ticking
-              // State change will trigger broadcast via subscription
-              break;
-            case "REQUEST_SET_CYCLE_INFO":
-              console.log(
-                `Host received REQUEST_SET_CYCLE_INFO from ${conn.peer}`
-              );
-              if (message.payload) {
-                setCycleInfo(
-                  message.payload.cycleCount,
-                  message.payload.longBreakInterval
-                );
-                // State change will trigger broadcast via subscription
-              } else {
-                console.warn(
-                  "Received REQUEST_SET_CYCLE_INFO without payload from",
-                  conn.peer
-                );
-              }
-              break;
-            case "REQUEST_SET_TIME_LEFT":
-              console.log(
-                `Host received REQUEST_SET_TIME_LEFT from ${conn.peer}`
-              );
-              if (
-                message.payload &&
-                typeof message.payload.timeLeft === "number"
-              ) {
-                setTimeLeft(message.payload.timeLeft);
-                // State change will trigger broadcast via subscription
-              } else {
-                console.warn(
-                  "Received REQUEST_SET_TIME_LEFT without valid payload from",
-                  conn.peer
-                );
-              }
-              break;
-          }
-        }
-      });
-
-      conn.on("close", () => {
-        const peerIdToRemove = conn.peer;
-        console.warn("Connection closed with", peerIdToRemove);
-
-        // Check for valid string ID before attempting update
-        if (typeof peerIdToRemove === "string") {
-          p2pState.update((state) => {
-            // Check if the key exists in the current state snapshot
-            if (peerIdToRemove in state.connections) {
-              const newConnections = { ...state.connections };
-              delete newConnections[peerIdToRemove];
-              return { ...state, connections: newConnections };
-            } else {
-              // Peer ID was valid string, but not in connections (maybe already removed?)
-              console.warn(
-                `Peer ID ${peerIdToRemove} not found in connections during close.`
-              );
-              return state; // No change needed
-            }
-          });
-        } else {
-          console.warn(
-            "Cannot remove connection on close: Peer ID is missing."
-          );
-        }
-      });
-      conn.on("error", (err) => {
-        const peerIdToRemoveOnError = conn.peer;
-        console.error("Connection error with", peerIdToRemoveOnError, ":", err);
-
-        // Check for valid string ID before attempting update
-        if (typeof peerIdToRemoveOnError === "string") {
-          p2pState.update((state) => {
-            // Check if the key exists in the current state snapshot
-            if (peerIdToRemoveOnError in state.connections) {
-              const newConnectionsOnError = { ...state.connections };
-              delete newConnectionsOnError[peerIdToRemoveOnError];
-              return { ...state, connections: newConnectionsOnError };
-            } else {
-              // Peer ID was valid string, but not in connections
-              console.warn(
-                `Peer ID ${peerIdToRemoveOnError} not found in connections during error.`
-              );
-              return state; // No change needed
-            }
-          });
-        } else {
-          console.warn(
-            "Cannot remove connection on error: Peer ID is missing."
-          );
-        }
-      });
-    });
-
-    localPeer.on("disconnected", () => {
-      console.warn("[p2pStore] Host Peer 'disconnected' event fired.");
-      const currentState = get(p2pState);
-      // Only reconnect if we were actually connected/hosting successfully before the disconnect
-      // and not if this is triggered after an error.
-      if (currentState.isHost && !currentState.error) {
-        console.warn(
-          "Host disconnected from PeerJS server. Attempting to reconnect..."
-        );
-        p2pState.update((state) => ({
-          ...state,
-          isConnected: false,
-          isConnecting: true,
-        }));
-        stopHostInterval(); // Stop timer if disconnected from server
-        localPeer?.reconnect();
-      } else {
-        console.warn(
-          "Host Peer disconnected, but not attempting reconnect (likely due to prior error or state)."
-        );
-        // Ensure we are not stuck in connecting state if disconnect happens after error
-        if (currentState.isConnecting) {
-          p2pState.update((s) => ({ ...s, isConnecting: false }));
-        }
-      }
-    });
-
-    localPeer.on("close", () => {
-      console.warn("[p2pStore] Host Peer 'close' event fired.");
-      const currentState = get(p2pState);
-      // Reset only if the close wasn't preceded by an error that already reset isHost
-      if (currentState.isHost) {
-        console.warn(
-          "Host Peer instance closed completely (while believed to be host). Resetting state."
-        );
-        p2pState.update((state) => ({ ...initialState }));
-        localPeer = null;
-        stopHostInterval();
-        if (timerStateUnsubscribe) timerStateUnsubscribe();
-      } else {
-        console.warn(
-          "Host Peer instance closed completely (state indicates not host, likely after error). Ensuring localPeer is null."
-        );
-        localPeer = null; // Ensure reference is cleared
-      }
-    });
-
-    localPeer.on("error", (err) => {
-      console.error("[p2pStore] Host Peer 'error' event fired:", err);
-      const errorMessage = err.message || "Unknown Host PeerJS error";
-      p2pState.update((state) => ({
-        ...state,
-        isConnecting: false,
-        isConnected: false,
-        isHost: false, // Crucially, set isHost back to false on error
-        error: errorMessage,
-      }));
-      // Stop timer first
-      stopHostInterval();
-      if (timerStateUnsubscribe) timerStateUnsubscribe();
-      // Then destroy the peer
-      if (localPeer && !localPeer.destroyed) {
-        console.log("[p2pStore] Destroying host peer due to error.");
-        localPeer.destroy(); // Should trigger close
-      } else {
-        localPeer = null;
-      }
-      // Don't reset timer state here, leave it as it was
-    });
-  } catch (error) {
-    console.error(
-      "[p2pStore] CRITICAL: Error during Peer host creation:",
-      error
-    );
-    p2pState.update((state) => ({
-      ...initialState, // Reset completely on critical failure
-      error: "Failed to create Peer instance for hosting.",
-    }));
-    localPeer = null; // Ensure localPeer is null
-    stopHostInterval();
-    if (timerStateUnsubscribe) timerStateUnsubscribe();
-  }
+const beginRuntime = (): number => {
+  runtimeToken += 1;
+  disconnectResources();
+  lastHostBroadcastMs = 0;
+  return runtimeToken;
 };
 
-// Function to initialize PeerJS as a client and connect to a host
-export const connectToHost = (hostId: string) => {
-  p2pState.update((state) => ({
-    ...state,
-    isConnecting: true,
-    error: null,
-    isHost: false,
-    connections: {},
-  }));
-
-  stopHostInterval();
-  if (timerStateUnsubscribe) timerStateUnsubscribe();
-
-  if (localPeer) {
-    localPeer.destroy();
-    localPeer = null; // Ensure clear before creating new
-  }
-
-  console.log(`Initializing PeerJS client to connect to host ID: ${hostId}`);
-  // Create the peer instance for *this* connection attempt
-  const clientPeerInstance = new Peer("", { debug: 2 });
-  localPeer = clientPeerInstance; // Assign to the shared variable
-
-  clientPeerInstance.on("open", (id) => {
-    console.info("Client PeerJS ID:", id, "Connecting to host:", hostId);
-
-    const conn = clientPeerInstance!.connect(hostId, { reliable: true });
-
-    // Store the host connection
-    p2pState.update((state) => ({ ...state, connections: { [hostId]: conn } }));
-
-    conn.on("open", () => {
-      console.info("Data connection opened with host", hostId);
-      p2pState.update((state) => ({
-        ...state,
-        peer: localPeer,
-        myId: id,
-        isConnecting: false,
-        isConnected: true,
-        error: null,
-      }));
-      // Don't need to send hello, host will send state
-    });
-
-    conn.on("data", (data) => {
-      console.info("Client received data from host", hostId, ":", data);
-      // Client receives state updates
-      const message = data as P2PMessage;
-      if (typeof message === "object" && message.type === "STATE_UPDATE") {
-        console.log("Client received STATE_UPDATE");
-        setTimerState(message.payload); // Update the local timer store
-      }
-    });
-
-    conn.on("close", () => {
-      console.warn("Connection to host closed", hostId);
-      p2pState.update((state) => ({
-        ...state,
-        isConnected: false,
-        isConnecting: false,
-        error: "Connection to host closed.",
-        connections: {},
-      }));
-      // Reset timer state if disconnected?
-      resetTimer(); // Or maybe keep last known state?
-    });
-
-    conn.on("error", (err) => {
-      console.error("Connection error with host", hostId, ":", err);
-      p2pState.update((state) => ({
-        ...state,
-        isConnecting: false,
-        isConnected: false,
-        error: `Connection error: ${err.message}`,
-        connections: {},
-      }));
-      resetTimer(); // Reset timer on connection error
-    });
-  });
-
-  // Handle errors for the client peer instance itself
-  clientPeerInstance.on("error", (err) => {
-    console.error("Client PeerJS error:", err);
-    const errorMessage = err.message || "Unknown PeerJS error";
-    const isPeerUnavailableError = errorMessage.includes(
-      "Could not connect to peer"
-    );
+const setConnectionTimeout = (
+  token: number,
+  timeoutMs: number,
+  message: string
+): void => {
+  clearConnectTimeout();
+  connectTimeoutId = window.setTimeout(() => {
+    if (token !== runtimeToken) {
+      return;
+    }
 
     p2pState.update((state) => ({
       ...state,
       isConnecting: false,
       isConnected: false,
-      error: isPeerUnavailableError
-        ? state.error || errorMessage
-        : errorMessage,
-      peer: isPeerUnavailableError ? state.peer : null,
-      myId: isPeerUnavailableError ? state.myId : null,
-      connections: isPeerUnavailableError ? state.connections : {},
+      error: message,
+      canBecomeHost: true,
+    }));
+  }, timeoutMs);
+};
+
+const channelNameForRoom = (roomId: string): string => `pomo-room-${roomId}`;
+
+const sendStateToPeerConnection = (connection: DataConnection): void => {
+  if (!connection.open) {
+    return;
+  }
+
+  const state = get(p2pState);
+  if (!state.myId) {
+    return;
+  }
+
+  connection.send({
+    type: "STATE_UPDATE",
+    senderId: state.myId,
+    payload: getTimerSnapshot(),
+  } satisfies TimerStateMessage);
+};
+
+const broadcastTimerState = (
+  state: TimerState,
+  token: number = runtimeToken
+): void => {
+  if (token !== runtimeToken) {
+    return;
+  }
+
+  const session = get(p2pState);
+  if (!session.isHost || !session.isConnected || !session.myId) {
+    return;
+  }
+
+  const message: TimerStateMessage = {
+    type: "STATE_UPDATE",
+    senderId: session.myId,
+    payload: state,
+  };
+
+  if (session.mode === "peerjs") {
+    Object.values(hostConnections).forEach((connection) => {
+      if (connection.open) {
+        connection.send(message);
+      }
+    });
+    return;
+  }
+
+  localChannel?.postMessage(message);
+};
+
+const sendHostPong = (hostId: string): void => {
+  const state = get(p2pState);
+  if (!state.myId) {
+    return;
+  }
+
+  localChannel?.postMessage({
+    type: "HOST_PONG",
+    senderId: state.myId,
+    hostId,
+  } satisfies SessionDiscoveryMessage);
+};
+
+const applyHostAction = (action: TimerActionMessage, token: number): void => {
+  if (token !== runtimeToken) {
+    return;
+  }
+
+  const now = Date.now();
+
+  let nextSnapshot: TimerState;
+  switch (action.type) {
+    case "REQUEST_START":
+      nextSnapshot = startTimer(now);
+      break;
+    case "REQUEST_PAUSE":
+      nextSnapshot = pauseTimer(now);
+      break;
+    case "REQUEST_RESET":
+      nextSnapshot = resetTimer(now);
+      break;
+    case "REQUEST_SET_CYCLE_INFO":
+      nextSnapshot = setCycleInfo(
+        action.payload.cycleCount,
+        action.payload.longBreakInterval,
+        now
+      );
+      break;
+    case "REQUEST_SET_TIME_LEFT":
+      nextSnapshot = setTimeLeft(action.payload.remainingSeconds, now);
+      break;
+    case "REQUEST_SET_DURATIONS":
+      nextSnapshot = setDurations(action.payload, now);
+      break;
+  }
+
+  broadcastTimerState(nextSnapshot, token);
+};
+
+const handleClientSessionMessage = (message: SessionMessage, token: number): void => {
+  if (token !== runtimeToken) {
+    return;
+  }
+
+  const session = get(p2pState);
+  if (!session.myId) {
+    return;
+  }
+
+  if (message.senderId === session.myId && message.type !== "STATE_UPDATE") {
+    return;
+  }
+
+  if (message.type === "STATE_UPDATE") {
+    setTimerStateFromRemote(message.payload);
+    clearConnectTimeout();
+    p2pState.update((state) => ({
+      ...state,
+      isConnecting: false,
+      isConnected: true,
+      hostId: message.senderId,
+      error: null,
+      canBecomeHost: false,
+    }));
+    return;
+  }
+
+  if (message.type === "HOST_PONG") {
+    clearConnectTimeout();
+    p2pState.update((state) => ({
+      ...state,
+      isConnecting: false,
+      isConnected: true,
+      hostId: message.hostId,
+      error: null,
+      canBecomeHost: false,
+    }));
+  }
+};
+
+const handleHostSessionMessage = (
+  message: SessionMessage,
+  token: number,
+  roomId: string
+): void => {
+  if (token !== runtimeToken) {
+    return;
+  }
+
+  if (message.type === "REQUEST_STATE") {
+    sendHostPong(roomId);
+    broadcastTimerState(getTimerSnapshot(), token);
+    return;
+  }
+
+  if (
+    message.type === "REQUEST_START" ||
+    message.type === "REQUEST_PAUSE" ||
+    message.type === "REQUEST_RESET" ||
+    message.type === "REQUEST_SET_CYCLE_INFO" ||
+    message.type === "REQUEST_SET_TIME_LEFT" ||
+    message.type === "REQUEST_SET_DURATIONS"
+  ) {
+    applyHostAction(message, token);
+  }
+};
+
+const removeHostConnection = (peerId: string): void => {
+  delete hostConnections[peerId];
+  p2pState.update((state) => ({
+    ...state,
+    connections: { ...hostConnections },
+  }));
+};
+
+const registerHostConnection = (connection: DataConnection): void => {
+  hostConnections[connection.peer] = connection;
+  p2pState.update((state) => ({
+    ...state,
+    connections: { ...hostConnections },
+  }));
+};
+
+const startHostHeartbeat = (token: number): void => {
+  clearHostHeartbeat();
+  hostHeartbeatId = window.setInterval(() => {
+    if (token !== runtimeToken) {
+      return;
+    }
+
+    const before = getTimerSnapshot();
+    const after = synchronizeTimer(Date.now());
+    const changed = !timerStateEquals(before, after);
+    const now = Date.now();
+
+    if (changed || (after.isRunning && now - lastHostBroadcastMs >= 1_000)) {
+      broadcastTimerState(after, token);
+      lastHostBroadcastMs = now;
+    }
+  }, HOST_HEARTBEAT_MS);
+};
+
+const markClientDisconnected = (message: string): void => {
+  p2pState.update((state) => ({
+    ...state,
+    isConnected: false,
+    isConnecting: false,
+    error: message,
+    canBecomeHost: true,
+  }));
+};
+
+const attachClientPeerConnection = (
+  connection: DataConnection,
+  token: number,
+  roomId: string
+): void => {
+  connection.on("open", () => {
+    if (token !== runtimeToken) {
+      return;
+    }
+
+    clearConnectTimeout();
+    p2pState.update((state) => ({
+      ...state,
+      isConnecting: false,
+      isConnected: true,
+      hostId: roomId,
+      error: null,
+      canBecomeHost: false,
     }));
 
-    if (
-      !isPeerUnavailableError &&
-      clientPeerInstance &&
-      !clientPeerInstance.destroyed
-    ) {
-      console.log("Destroying client peer due to non-peer-unavailable error.");
-      clientPeerInstance.destroy();
-    } else if (!isPeerUnavailableError) {
-      // If it's not the specific error and peer is already destroyed/null,
-      // ensure the global ref is also null if it somehow still points here.
-      if (localPeer === clientPeerInstance) {
-        localPeer = null;
-      }
-    }
+    connection.send({
+      type: "REQUEST_STATE",
+      senderId: get(p2pState).myId ?? "unknown",
+    } satisfies SessionDiscoveryMessage);
   });
 
-  clientPeerInstance.on("disconnected", () => {
-    console.warn(
-      "Client disconnected from PeerJS server. Attempting to reconnect..."
-    );
-    // Only update state if not already showing the peer unavailable error
-    const currentState = get(p2pState);
-    if (!currentState.error?.includes("Could not connect to peer")) {
-      p2pState.update((state) => ({
-        ...state,
-        isConnected: false,
-        isConnecting: true,
-      }));
-      localPeer?.reconnect();
-    } else {
-      console.log(
-        "Skipping reconnect attempt because peer unavailable error is active."
-      );
+  connection.on("data", (data) => {
+    const message = parseSessionMessage(data);
+    if (!message) {
+      return;
     }
+    handleClientSessionMessage(message, token);
   });
 
-  // --- Revised Client Close Handler ---
-  clientPeerInstance.on("close", () => {
-    console.warn(
-      "Client Peer instance closed completely (Instance ID: ",
-      clientPeerInstance.id,
-      ")"
-    );
-    const currentState = get(p2pState);
-
-    // Only modify state if this closing peer is still the *active* one in the store
-    // AND if we haven't successfully transitioned to being the host.
-    if (currentState.peer === clientPeerInstance && !currentState.isHost) {
-      console.log(
-        "[Client Close] This peer instance is the active one and we are not host. Processing close..."
-      );
-      if (!currentState.error?.includes("Could not connect to peer")) {
-        console.log(
-          "[Client Close] Resetting state to initial due to peer close (non-peer-unavailable)."
-        );
-        p2pState.update((state) => ({ ...initialState }));
-        localPeer = null;
-      } else {
-        console.log(
-          "[Client Close] Peer closed, but keeping state due to active peer unavailable error."
-        );
-        localPeer = null;
-        p2pState.update((state) => ({
-          ...state,
-          isConnecting: false,
-          peer: null,
-        }));
-      }
-    } else {
-      console.log(
-        "[Client Close] Ignoring close event from potentially stale Peer instance or because we are now host."
-      );
-      // If the global localPeer somehow still points to this instance, clear it.
-      if (localPeer === clientPeerInstance) {
-        localPeer = null;
-      }
+  connection.on("close", () => {
+    if (token !== runtimeToken) {
+      return;
     }
+    markClientDisconnected("Disconnected from host.");
   });
-  // --- End Revised Client Close Handler ---
+
+  connection.on("error", (error) => {
+    if (token !== runtimeToken) {
+      return;
+    }
+    markClientDisconnected(normalizeError(error));
+  });
 };
 
-// Function to clean up PeerJS connection
-export const disconnectPeer = () => {
-  stopHostInterval(); // Ensure interval is stopped regardless of host/client
-  if (timerStateUnsubscribe) timerStateUnsubscribe();
+const attachHostPeerConnection = (
+  connection: DataConnection,
+  token: number,
+  roomId: string
+): void => {
+  connection.on("open", () => {
+    if (token !== runtimeToken) {
+      return;
+    }
 
-  if (localPeer) {
-    console.info("Disconnecting PeerJS...");
-    localPeer.destroy(); // Triggers 'close' event for final cleanup
+    registerHostConnection(connection);
+    sendStateToPeerConnection(connection);
+  });
+
+  connection.on("data", (data) => {
+    const message = parseSessionMessage(data);
+    if (!message) {
+      return;
+    }
+    handleHostSessionMessage(message, token, roomId);
+  });
+
+  connection.on("close", () => {
+    if (token !== runtimeToken) {
+      return;
+    }
+    removeHostConnection(connection.peer);
+  });
+
+  connection.on("error", () => {
+    if (token !== runtimeToken) {
+      return;
+    }
+    removeHostConnection(connection.peer);
+  });
+};
+
+const connectToBroadcastHost = (
+  token: number,
+  roomId: string,
+  timeoutMs: number
+): void => {
+  const channel = new BroadcastChannel(channelNameForRoom(roomId));
+  localChannel = channel;
+
+  channel.onmessage = (event: MessageEvent<unknown>) => {
+    const message = parseSessionMessage(event.data);
+    if (!message) {
+      return;
+    }
+    handleClientSessionMessage(message, token);
+  };
+
+  setConnectionTimeout(
+    token,
+    timeoutMs,
+    `Timed out connecting to room "${roomId}".`
+  );
+
+  channel.postMessage({
+    type: "REQUEST_STATE",
+    senderId: get(p2pState).myId ?? "unknown",
+  } satisfies SessionDiscoveryMessage);
+};
+
+const connectToPeerHost = (
+  token: number,
+  roomId: string,
+  timeoutMs: number
+): void => {
+  const peer = new Peer({
+    debug: 0,
+  });
+  localPeer = peer;
+
+  setConnectionTimeout(
+    token,
+    timeoutMs,
+    `Timed out connecting to room "${roomId}".`
+  );
+
+  peer.on("open", (id) => {
+    if (token !== runtimeToken) {
+      return;
+    }
+
+    p2pState.update((state) => ({
+      ...state,
+      myId: id,
+    }));
+
+    clientConnection = peer.connect(roomId, { reliable: true });
+    attachClientPeerConnection(clientConnection, token, roomId);
+  });
+
+  peer.on("error", (error) => {
+    if (token !== runtimeToken) {
+      return;
+    }
+
+    clearConnectTimeout();
+    const message = normalizeError(error);
+    const canHost = /could not connect to peer|peer-unavailable/i.test(message);
+
+    p2pState.update((state) => ({
+      ...state,
+      isConnecting: false,
+      isConnected: false,
+      error: message,
+      canBecomeHost: canHost || state.canBecomeHost,
+    }));
+  });
+
+  peer.on("close", () => {
+    if (token !== runtimeToken) {
+      return;
+    }
+    markClientDisconnected("Peer connection closed.");
+  });
+};
+
+const startBroadcastHost = (token: number, roomId: string): void => {
+  const channel = new BroadcastChannel(channelNameForRoom(roomId));
+  localChannel = channel;
+
+  p2pState.update((state) => ({
+    ...state,
+    isConnecting: false,
+    isConnected: true,
+    isHost: true,
+    canBecomeHost: false,
+    error: null,
+    myId: roomId,
+    hostId: roomId,
+  }));
+
+  channel.onmessage = (event: MessageEvent<unknown>) => {
+    const message = parseSessionMessage(event.data);
+    if (!message) {
+      return;
+    }
+
+    if (message.senderId === roomId) {
+      return;
+    }
+
+    handleHostSessionMessage(message, token, roomId);
+  };
+
+  startHostHeartbeat(token);
+  broadcastTimerState(getTimerSnapshot(), token);
+};
+
+const startPeerHost = (token: number, roomId: string): void => {
+  const peer = new Peer(roomId, { debug: 0 });
+  localPeer = peer;
+
+  peer.on("open", (id) => {
+    if (token !== runtimeToken) {
+      return;
+    }
+
+    p2pState.update((state) => ({
+      ...state,
+      isConnecting: false,
+      isConnected: true,
+      isHost: true,
+      canBecomeHost: false,
+      error: null,
+      myId: id,
+      hostId: id,
+    }));
+
+    startHostHeartbeat(token);
+    broadcastTimerState(getTimerSnapshot(), token);
+  });
+
+  peer.on("connection", (connection) => {
+    if (token !== runtimeToken) {
+      return;
+    }
+    attachHostPeerConnection(connection, token, roomId);
+  });
+
+  peer.on("error", (error) => {
+    if (token !== runtimeToken) {
+      return;
+    }
+
+    p2pState.update((state) => ({
+      ...state,
+      isConnecting: false,
+      isConnected: false,
+      isHost: false,
+      error: normalizeError(error),
+      canBecomeHost: true,
+    }));
+  });
+
+  peer.on("close", () => {
+    if (token !== runtimeToken) {
+      return;
+    }
+    p2pState.update((state) => ({
+      ...state,
+      isConnecting: false,
+      isConnected: false,
+      isHost: false,
+      error: "Host connection closed.",
+      canBecomeHost: true,
+    }));
+  });
+};
+
+export const connectToHost = (
+  roomId: string,
+  options: ConnectOptions = {}
+): void => {
+  const mode = options.mode ?? "peerjs";
+  const timeoutMs = options.timeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
+  const token = beginRuntime();
+  const clientId = makeClientId();
+  resetTimerStore(Date.now());
+
+  p2pState.set({
+    ...initialState,
+    mode,
+    roomId,
+    myId: clientId,
+    hostId: roomId,
+    isConnecting: true,
+    canBecomeHost: true,
+  });
+
+  if (mode === "broadcast") {
+    connectToBroadcastHost(token, roomId, timeoutMs);
+    return;
   }
-  // State reset happens in 'close' event
+
+  connectToPeerHost(token, roomId, timeoutMs);
 };
 
-// --- Functions to Send Action Requests (called by UI) ---
+export const initializeHost = (
+  roomId: string,
+  options: ConnectOptions = {}
+): void => {
+  const mode = options.mode ?? "peerjs";
+  const token = beginRuntime();
+  resetTimerStore(Date.now());
 
-const sendActionRequest = (request: TimerActionRequest) => {
+  p2pState.set({
+    ...initialState,
+    mode,
+    roomId,
+    myId: mode === "broadcast" ? roomId : null,
+    hostId: roomId,
+    isHost: true,
+    isConnecting: true,
+    canBecomeHost: false,
+  });
+
+  if (mode === "broadcast") {
+    startBroadcastHost(token, roomId);
+    return;
+  }
+
+  startPeerHost(token, roomId);
+};
+
+export const disconnectPeer = (): void => {
+  beginRuntime();
+  p2pState.set(initialState);
+  resetTimerStore(Date.now());
+};
+
+const sendActionRequest = (
+  buildMessage: (senderId: string) => TimerActionMessage
+): void => {
   const state = get(p2pState);
-  if (state.isHost) {
-    // Host executes directly and broadcasts via state subscription
-    console.log("Host executing action locally:", request.type);
-    switch (request.type) {
-      case "REQUEST_START":
-        startTimer();
-        startHostInterval();
-        break;
-      case "REQUEST_PAUSE":
-        pauseTimer();
-        stopHostInterval();
-        break;
-      case "REQUEST_RESET":
-        resetTimer();
-        stopHostInterval();
-        break;
-      case "REQUEST_SET_CYCLE_INFO":
-        if (request.payload) {
-          setCycleInfo(
-            request.payload.cycleCount,
-            request.payload.longBreakInterval
-          );
-        } else {
-          console.warn("Host attempted to set cycle info without payload.");
-        }
-        break;
-      case "REQUEST_SET_TIME_LEFT":
-        if (request.payload && typeof request.payload.timeLeft === "number") {
-          setTimeLeft(request.payload.timeLeft);
-        } else {
-          console.warn(
-            "Host attempted to set time left without valid payload."
-          );
-        }
-        break;
-    }
-  } else {
-    // Client sends request to host
-    const hostConnection = Object.values(state.connections)[0]; // Client only has one connection (to host)
-    if (hostConnection && hostConnection.open) {
-      console.log("Client sending action request to host:", request.type);
-      hostConnection.send(request);
-    } else {
-      console.warn("Cannot send action request: No open connection to host.");
-      // Optionally show an error to the user
-    }
+  if (!state.roomId) {
+    return;
   }
+
+  const senderId = state.myId ?? makeClientId();
+  if (!state.myId) {
+    p2pState.update((current) => ({ ...current, myId: senderId }));
+  }
+
+  const message = buildMessage(senderId);
+
+  if (state.isHost) {
+    applyHostAction(message, runtimeToken);
+    return;
+  }
+
+  if (state.mode === "peerjs") {
+    if (clientConnection?.open) {
+      clientConnection.send(message);
+    }
+    return;
+  }
+
+  localChannel?.postMessage(message);
 };
 
-export const requestStartTimer = () =>
-  sendActionRequest({ type: "REQUEST_START" });
-export const requestPauseTimer = () =>
-  sendActionRequest({ type: "REQUEST_PAUSE" });
-export const requestResetTimer = () =>
-  sendActionRequest({ type: "REQUEST_RESET" });
+export const requestStartTimer = (): void =>
+  sendActionRequest((senderId) => ({ type: "REQUEST_START", senderId }));
+
+export const requestPauseTimer = (): void =>
+  sendActionRequest((senderId) => ({ type: "REQUEST_PAUSE", senderId }));
+
+export const requestResetTimer = (): void =>
+  sendActionRequest((senderId) => ({ type: "REQUEST_RESET", senderId }));
+
 export const requestSetCycleInfo = (
   cycleCount: number,
   longBreakInterval: number
-) => {
-  sendActionRequest({
+): void =>
+  sendActionRequest((senderId) => ({
     type: "REQUEST_SET_CYCLE_INFO",
+    senderId,
     payload: { cycleCount, longBreakInterval },
-  });
-};
+  }));
 
-export const requestSetTimeLeft = (timeLeft: number) => {
-  sendActionRequest({ type: "REQUEST_SET_TIME_LEFT", payload: { timeLeft } });
-};
+export const requestSetTimeLeft = (remainingSeconds: number): void =>
+  sendActionRequest((senderId) => ({
+    type: "REQUEST_SET_TIME_LEFT",
+    senderId,
+    payload: { remainingSeconds },
+  }));
+
+export const requestSetDurations = (
+  durations: Partial<TimerDurations>
+): void =>
+  sendActionRequest((senderId) => ({
+    type: "REQUEST_SET_DURATIONS",
+    senderId,
+    payload: durations,
+  }));

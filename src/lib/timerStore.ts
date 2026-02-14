@@ -1,253 +1,111 @@
-import { writable, get } from "svelte/store";
+import { get, writable } from "svelte/store";
+import {
+  createInitialTimerState,
+  pauseTimerState,
+  resetTimerState as resetTimerStateValue,
+  sanitizeTimerState,
+  setCycleInfoState,
+  setDurationsState,
+  setTimeLeftState,
+  startTimerState,
+  synchronizeTimerState,
+  timerStateEquals,
+  toTimerDisplayState,
+  type TimerDisplayState,
+  type TimerDurations,
+  type TimerState,
+  TimerPhase,
+} from "./timerEngine";
 
-// Define Timer Phases
-export enum TimerPhase {
-  Work = "Work",
-  ShortBreak = "Short Break",
-  LongBreak = "Long Break",
-}
+export { TimerPhase, type TimerState, type TimerDisplayState, type TimerDurations };
+export { formatTimer, timerStateEquals, toTimerDisplayState } from "./timerEngine";
 
-// Define Timer State Structure
-export interface TimerState {
-  phase: TimerPhase;
-  timeLeft: number; // Seconds
-  isRunning: boolean;
-  // Settings (can be expanded later)
-  workDuration: number; // Seconds
-  shortBreakDuration: number; // Seconds
-  longBreakDuration: number; // Seconds
-  longBreakInterval: number; // Number of work cycles before a long break
-  cycleCount: number; // How many work cycles completed in the current sequence
-  justFinished: boolean; // Flag to indicate the timer just hit 0
-}
+const store = writable<TimerState>(createInitialTimerState());
 
-// Initial State Configuration
-const DEFAULT_WORK_DURATION = 25 * 60; // 25 minutes
-const DEFAULT_SHORT_BREAK_DURATION = 5 * 60; // 5 minutes
-const DEFAULT_LONG_BREAK_DURATION = 15 * 60; // 15 minutes
-const DEFAULT_LONG_BREAK_INTERVAL = 4;
-
-const initialState: TimerState = {
-  phase: TimerPhase.Work,
-  timeLeft: DEFAULT_WORK_DURATION,
-  isRunning: false,
-  workDuration: DEFAULT_WORK_DURATION,
-  shortBreakDuration: DEFAULT_SHORT_BREAK_DURATION,
-  longBreakDuration: DEFAULT_LONG_BREAK_DURATION,
-  longBreakInterval: DEFAULT_LONG_BREAK_INTERVAL,
-  cycleCount: 0,
-  justFinished: false,
+export const timerState = {
+  subscribe: store.subscribe,
 };
 
-// Create the writable store
-export const timerState = writable<TimerState>(initialState);
-
-// --- Timer Logic Actions ---
-
-/** Decrements the timer by one second and handles phase transitions */
-export const tick = () => {
-  timerState.update((state) => {
-    if (!state.isRunning || state.timeLeft <= 0) {
-      // Ensure flag is false if not running or already 0
-      if (state.justFinished) return { ...state, justFinished: false };
-      return state;
-    }
-
-    const newTimeLeft = state.timeLeft - 1;
-    // Start with current state, assume justFinished is false unless timer hits 0
-    let newState = { ...state, timeLeft: newTimeLeft, justFinished: false };
-
-    if (newTimeLeft <= 0) {
-      // Timer finished, transition to next phase
-      newState.justFinished = true; // Signal that the timer just finished
-      // newState.isRunning = false; // Stop timer (will be set based on next phase)
-
-      // Determine next phase
-      let nextPhase: TimerPhase;
-      let nextTimeLeft: number;
-      let nextCycleCount = state.cycleCount;
-
-      if (state.phase === TimerPhase.Work) {
-        nextCycleCount++; // Increment cycle count after work phase completes
-        if (nextCycleCount >= state.longBreakInterval) {
-          nextPhase = TimerPhase.LongBreak;
-          nextTimeLeft = state.longBreakDuration;
-          nextCycleCount = 0; // Reset cycle count for the long break
-        } else {
-          nextPhase = TimerPhase.ShortBreak;
-          nextTimeLeft = state.shortBreakDuration;
-        }
-      } else {
-        // Phase was ShortBreak or LongBreak
-        nextPhase = TimerPhase.Work;
-        nextTimeLeft = state.workDuration;
-        // Keep cycle count as is until next work phase completes
-      }
-
-      newState.phase = nextPhase;
-      newState.timeLeft = nextTimeLeft;
-      newState.cycleCount = nextCycleCount;
-
-      // Set isRunning based on the *next* phase
-      newState.isRunning =
-        nextPhase === TimerPhase.ShortBreak ||
-        nextPhase === TimerPhase.LongBreak;
-
-      console.log(
-        `Timer finished. Transitioning to ${newState.phase}. Auto-starting: ${newState.isRunning}. Cycle count: ${newState.cycleCount}`
-      );
-    }
-    // No need to explicitly set justFinished = false here,
-    // it defaults to false and is only true if newTimeLeft <= 0.
-
-    return newState;
+const apply = (updater: (current: TimerState) => TimerState): TimerState => {
+  let nextSnapshot = get(store);
+  store.update((current) => {
+    const next = sanitizeTimerState(updater(current));
+    nextSnapshot = next;
+    return next;
   });
+  return nextSnapshot;
 };
 
-// --- Actions --- (These modify the store)
-
-/** Starts or resumes the timer. */
-export const startTimer = () => {
-  timerState.update((state) => {
-    // If starting from a non-running state at exactly 0, we should advance first.
-    // The tick function now handles the transition *when hitting* 0,
-    // but not if it's already 0 and paused.
-    if (state.timeLeft <= 0 && !state.isRunning) {
-      console.log("Timer at 0 and paused, advancing phase before starting.");
-      // Let's reuse the logic from tick for advancing phase
-      let nextPhase: TimerPhase;
-      let nextTimeLeft: number;
-      let nextCycleCount = state.cycleCount;
-
-      if (state.phase === TimerPhase.Work) {
-        nextCycleCount++;
-        if (nextCycleCount >= state.longBreakInterval) {
-          nextPhase = TimerPhase.LongBreak;
-          nextTimeLeft = state.longBreakDuration;
-          nextCycleCount = 0;
-        } else {
-          nextPhase = TimerPhase.ShortBreak;
-          nextTimeLeft = state.shortBreakDuration;
-        }
-      } else {
-        nextPhase = TimerPhase.Work;
-        nextTimeLeft = state.workDuration;
-      }
-      // Return new state for the next phase, and set isRunning true
-      return {
-        ...state,
-        phase: nextPhase,
-        timeLeft: nextTimeLeft,
-        cycleCount: nextCycleCount,
-        isRunning: true,
-        justFinished: false,
-      };
-    }
-    // Otherwise, just resume
-    return { ...state, isRunning: true, justFinished: false }; // Ensure flag is false on manual start
-  });
-};
-
-/** Pauses the timer. */
-export const pauseTimer = () => {
-  timerState.update((state) => ({
-    ...state,
-    isRunning: false,
-    justFinished: false,
-  })); // Ensure flag is false on pause
-};
-
-/** Resets the timer to the initial work phase. */
-export const resetTimer = () => {
-  timerState.update((state) => ({
-    ...initialState,
-    workDuration: state.workDuration,
-    shortBreakDuration: state.shortBreakDuration,
-    longBreakDuration: state.longBreakDuration,
-    longBreakInterval: state.longBreakInterval,
-    justFinished: false, // Ensure flag is false on reset
-  }));
-};
-
-/** Sets the current cycle count and the long break interval. */
-export const setCycleInfo = (
-  newCycleCount: number,
-  newLongBreakInterval: number
-) => {
-  timerState.update((state) => {
-    // Validate inputs
-    const cycleCount = Math.max(0, Math.floor(newCycleCount));
-    const longBreakInterval = Math.max(1, Math.floor(newLongBreakInterval)); // Interval must be at least 1
-
-    // Ensure cycleCount does not exceed the new interval (or interval - 1?)
-    // If current cycle is 2/4 and interval becomes 2, maybe reset cycle to 0?
-    // Let's clamp cycleCount to be less than longBreakInterval for simplicity.
-    const clampedCycleCount = Math.min(cycleCount, longBreakInterval - 1);
-
-    return {
-      ...state,
-      cycleCount: clampedCycleCount,
-      longBreakInterval: longBreakInterval,
-      justFinished: false, // Ensure flag is reset on manual change
-    };
-  });
-};
-
-/** Sets the time left directly. */
-export const setTimeLeft = (newTimeLeft: number) => {
-  timerState.update((state) => {
-    // Validate input - ensure it's a non-negative number of seconds
-    const validatedTimeLeft = Math.max(0, Math.floor(newTimeLeft));
-
-    // Should we pause the timer when setting time manually? Let's not for now.
-    // Should we reset the phase? Let's not for now.
-    // Just update the time and reset the 'justFinished' flag.
-    return {
-      ...state,
-      timeLeft: validatedTimeLeft,
-      justFinished: false,
-    };
-  });
-};
-
-/** Sets the entire timer state. Used by clients receiving updates. */
-export const setTimerState = (newState: TimerState) => {
-  // When receiving state from others, assume it's not 'just finished'
-  timerState.set({ ...newState, justFinished: false });
-};
-
-// TODO: Add action for setTimerSettings if needed later
-// export const setTimerSettings = (settings: Partial<TimerState>) => { ... };
-
-// --- Internal Helper Function (_advancePhase) ---
-// This might need review/removal if startTimer logic handles it directly now
-const _advancePhase = (state: TimerState): TimerState => {
-  let nextPhase: TimerPhase;
-  let nextTimeLeft: number;
-  let nextCycleCount = state.cycleCount;
-
-  // This logic seems duplicated from the tick function now, simplify?
-  if (state.phase === TimerPhase.Work) {
-    nextCycleCount++;
-    if (nextCycleCount >= state.longBreakInterval) {
-      nextPhase = TimerPhase.LongBreak;
-      nextTimeLeft = state.longBreakDuration;
-      nextCycleCount = 0;
-    } else {
-      nextPhase = TimerPhase.ShortBreak;
-      nextTimeLeft = state.shortBreakDuration;
-    }
-  } else {
-    nextPhase = TimerPhase.Work;
-    nextTimeLeft = state.workDuration;
+const isIncomingNewer = (current: TimerState, incoming: TimerState): boolean => {
+  if (incoming.revision !== current.revision) {
+    return incoming.revision > current.revision;
   }
 
-  return {
-    ...state,
-    phase: nextPhase,
-    timeLeft: nextTimeLeft,
-    cycleCount: nextCycleCount,
-    isRunning: true, // This helper assumes auto-start
-    justFinished: false, // Ensure flag is false when advancing manually
-  };
+  if (incoming.updatedAtMs !== current.updatedAtMs) {
+    return incoming.updatedAtMs > current.updatedAtMs;
+  }
+
+  return incoming.alertToken > current.alertToken;
+};
+
+export const getTimerSnapshot = (): TimerState => get(store);
+
+export const setTimerStateFromRemote = (incoming: TimerState): TimerState =>
+  apply((current) => {
+    const sanitizedIncoming = sanitizeTimerState(incoming);
+    return isIncomingNewer(current, sanitizedIncoming) ? sanitizedIncoming : current;
+  });
+
+export const synchronizeTimer = (nowMs: number = Date.now()): TimerState =>
+  apply((current) => synchronizeTimerState(current, nowMs, true));
+
+export const startTimer = (nowMs: number = Date.now()): TimerState =>
+  apply((current) => startTimerState(current, nowMs));
+
+export const pauseTimer = (nowMs: number = Date.now()): TimerState =>
+  apply((current) => pauseTimerState(current, nowMs));
+
+export const resetTimer = (nowMs: number = Date.now()): TimerState =>
+  apply((current) => resetTimerStateValue(current, nowMs));
+
+export const resetTimerStore = (
+  nowMs: number = Date.now(),
+  durations: Partial<TimerDurations> = {}
+): TimerState =>
+  apply((current) => {
+    const next = createInitialTimerState(nowMs, {
+      ...current,
+      ...durations,
+    });
+    return {
+      ...next,
+      revision: current.revision + 1,
+      alertToken: current.alertToken,
+    };
+  });
+
+export const setCycleInfo = (
+  cycleCount: number,
+  longBreakInterval: number,
+  nowMs: number = Date.now()
+): TimerState =>
+  apply((current) => setCycleInfoState(current, cycleCount, longBreakInterval, nowMs));
+
+export const setTimeLeft = (
+  remainingSeconds: number,
+  nowMs: number = Date.now()
+): TimerState => apply((current) => setTimeLeftState(current, remainingSeconds, nowMs));
+
+export const setDurations = (
+  durations: Partial<TimerDurations>,
+  nowMs: number = Date.now()
+): TimerState => apply((current) => setDurationsState(current, durations, nowMs));
+
+export const getTimerDisplayState = (
+  nowMs: number = Date.now()
+): TimerDisplayState => toTimerDisplayState(get(store), nowMs);
+
+export const replaceTimerState = (next: TimerState): void => {
+  const normalized = sanitizeTimerState(next);
+  store.update((current) => (timerStateEquals(current, normalized) ? current : normalized));
 };
