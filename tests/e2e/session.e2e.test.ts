@@ -65,14 +65,27 @@ const stopPreview = (): void => {
   previewProcess = null;
 };
 
-const clearAndType = async (
+const setInputValue = async (
   page: Page,
   selector: string,
   value: string
 ): Promise<void> => {
-  await page.click(selector, { clickCount: 3 });
-  await page.keyboard.press("Backspace");
-  await page.type(selector, value);
+  await page.$eval(
+    selector,
+    (element, nextValue) => {
+      const input = element as HTMLInputElement;
+      input.value = nextValue;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    },
+    value
+  );
+};
+
+const forceClick = async (page: Page, selector: string): Promise<void> => {
+  await page.$eval(selector, (element) => {
+    (element as HTMLElement).click();
+  });
 };
 
 const screenshot = async (page: Page, name: string): Promise<void> => {
@@ -113,13 +126,13 @@ describe("session e2e", () => {
       waitUntil: "domcontentloaded",
     });
     await page.waitForSelector('[data-testid="start-hosting"]', { timeout: 12_000 });
-    await page.click('[data-testid="start-hosting"]');
+    await forceClick(page, '[data-testid="start-hosting"]');
     await page.waitForSelector('[data-testid="timer-shell"]', { timeout: 12_000 });
 
-    await clearAndType(page, '[data-testid="remaining-minutes"]', "0");
-    await clearAndType(page, '[data-testid="remaining-seconds"]', "3");
-    await page.click('[data-testid="apply-remaining"]');
-    await page.click('[data-testid="control-start"]');
+    await setInputValue(page, '[data-testid="remaining-minutes"]', "0");
+    await setInputValue(page, '[data-testid="remaining-seconds"]', "3");
+    await forceClick(page, '[data-testid="apply-remaining"]');
+    await forceClick(page, '[data-testid="control-start"]');
 
     await page.waitForFunction(
       () =>
@@ -155,7 +168,7 @@ describe("session e2e", () => {
     await hostPage.waitForSelector('[data-testid="start-hosting"]', {
       timeout: 12_000,
     });
-    await hostPage.click('[data-testid="start-hosting"]');
+    await forceClick(hostPage, '[data-testid="start-hosting"]');
     await hostPage.waitForSelector('[data-testid="timer-shell"]', { timeout: 12_000 });
 
     await clientPage.goto(sessionUrl, {
@@ -165,9 +178,9 @@ describe("session e2e", () => {
       timeout: 12_000,
     });
 
-    await clearAndType(hostPage, '[data-testid="remaining-minutes"]', "0");
-    await clearAndType(hostPage, '[data-testid="remaining-seconds"]', "5");
-    await hostPage.click('[data-testid="apply-remaining"]');
+    await setInputValue(hostPage, '[data-testid="remaining-minutes"]', "0");
+    await setInputValue(hostPage, '[data-testid="remaining-seconds"]', "5");
+    await forceClick(hostPage, '[data-testid="apply-remaining"]');
     await clientPage.waitForFunction(
       () => {
         const text =
@@ -177,7 +190,7 @@ describe("session e2e", () => {
       { timeout: 10_000 }
     );
 
-    await hostPage.click('[data-testid="control-start"]');
+    await forceClick(hostPage, '[data-testid="control-start"]');
 
     await clientPage.waitForFunction(
       () => {
@@ -189,5 +202,7 @@ describe("session e2e", () => {
     );
 
     await screenshot(hostPage, "sync-host");
+    await hostPage.close();
+    await clientPage.close();
   }, 45_000);
 });

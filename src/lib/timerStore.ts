@@ -101,11 +101,12 @@ export const setDurations = (
   nowMs: number = Date.now()
 ): TimerState => apply((current) => setDurationsState(current, durations, nowMs));
 
-export const getTimerDisplayState = (
-  nowMs: number = Date.now()
-): TimerDisplayState => toTimerDisplayState(get(store), nowMs);
+export const getTimerDisplayState = (nowMs: number = Date.now()): TimerDisplayState =>
+  toTimerDisplayState(get(store), nowMs);
 
 export const replaceTimerState = (next: TimerState): void => {
   const normalized = sanitizeTimerState(next);
-  store.update((current) => (timerStateEquals(current, normalized) ? current : normalized));
+  store.update((current) =>
+    timerStateEquals(current, normalized) ? current : normalized
+  );
 };

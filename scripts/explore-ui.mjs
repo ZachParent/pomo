@@ -43,9 +43,10 @@ const waitForServer = async (url) => {
 
 const startPreview = async () => {
   const preview = spawn("pnpm", ["preview", "--host", host, "--port", String(port)], {
-    stdio: "inherit",
+    stdio: "ignore",
     env: process.env,
   });
+  preview.unref();
   await waitForServer(baseUrl);
   return preview;
 };
@@ -104,7 +105,9 @@ const main = async () => {
     await page.close();
   } finally {
     await browser.close();
-    preview.kill("SIGTERM");
+    if (!preview.killed) {
+      preview.kill("SIGKILL");
+    }
   }
 };
 

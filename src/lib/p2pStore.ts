@@ -228,10 +228,7 @@ const sendStateToPeerConnection = (connection: DataConnection): void => {
   } satisfies TimerStateMessage);
 };
 
-const broadcastTimerState = (
-  state: TimerState,
-  token: number = runtimeToken
-): void => {
+const broadcastTimerState = (state: TimerState, token: number = runtimeToken): void => {
   if (token !== runtimeToken) {
     return;
   }
@@ -523,11 +520,7 @@ const connectToBroadcastHost = (
     handleClientSessionMessage(message, token);
   };
 
-  setConnectionTimeout(
-    token,
-    timeoutMs,
-    `Timed out connecting to room "${roomId}".`
-  );
+  setConnectionTimeout(token, timeoutMs, `Timed out connecting to room "${roomId}".`);
 
   channel.postMessage({
     type: "REQUEST_STATE",
@@ -535,21 +528,13 @@ const connectToBroadcastHost = (
   } satisfies SessionDiscoveryMessage);
 };
 
-const connectToPeerHost = (
-  token: number,
-  roomId: string,
-  timeoutMs: number
-): void => {
+const connectToPeerHost = (token: number, roomId: string, timeoutMs: number): void => {
   const peer = new Peer({
     debug: 0,
   });
   localPeer = peer;
 
-  setConnectionTimeout(
-    token,
-    timeoutMs,
-    `Timed out connecting to room "${roomId}".`
-  );
+  setConnectionTimeout(token, timeoutMs, `Timed out connecting to room "${roomId}".`);
 
   peer.on("open", (id) => {
     if (token !== runtimeToken) {
@@ -684,10 +669,7 @@ const startPeerHost = (token: number, roomId: string): void => {
   });
 };
 
-export const connectToHost = (
-  roomId: string,
-  options: ConnectOptions = {}
-): void => {
+export const connectToHost = (roomId: string, options: ConnectOptions = {}): void => {
   const mode = options.mode ?? "peerjs";
   const timeoutMs = options.timeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
   const token = beginRuntime();
@@ -712,10 +694,7 @@ export const connectToHost = (
   connectToPeerHost(token, roomId, timeoutMs);
 };
 
-export const initializeHost = (
-  roomId: string,
-  options: ConnectOptions = {}
-): void => {
+export const initializeHost = (roomId: string, options: ConnectOptions = {}): void => {
   const mode = options.mode ?? "peerjs";
   const token = beginRuntime();
   resetTimerStore(Date.now());
@@ -801,9 +780,7 @@ export const requestSetTimeLeft = (remainingSeconds: number): void =>
     payload: { remainingSeconds },
   }));
 
-export const requestSetDurations = (
-  durations: Partial<TimerDurations>
-): void =>
+export const requestSetDurations = (durations: Partial<TimerDurations>): void =>
   sendActionRequest((senderId) => ({
     type: "REQUEST_SET_DURATIONS",
     senderId,

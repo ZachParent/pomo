@@ -62,9 +62,7 @@ const clampCycleCount = (cycleCount: number, interval: number): number => {
   return Math.max(0, Math.min(interval - 1, numeric));
 };
 
-const normalizeDurations = (
-  partial: Partial<TimerDurations>
-): TimerDurations => {
+const normalizeDurations = (partial: Partial<TimerDurations>): TimerDurations => {
   const workDurationSeconds = clampDuration(
     partial.workDurationSeconds ?? DEFAULT_DURATIONS.workDurationSeconds
   );
@@ -105,10 +103,7 @@ const normalizeState = (state: TimerState): TimerState => {
   };
 };
 
-const getPhaseDuration = (
-  phase: TimerPhase,
-  durations: TimerDurations
-): number => {
+const getPhaseDuration = (phase: TimerPhase, durations: TimerDurations): number => {
   if (phase === TimerPhase.Work) {
     return durations.workDurationSeconds;
   }
