@@ -1,21 +1,33 @@
 # Task Tracker
 
-Last updated: 2026-02-14
+Last updated: 2026-02-15
 
-## Completed
+## Ticket System
 
-- [x] Replaced legacy timer logic with deterministic timestamp-based engine.
-- [x] Reworked session transport to support `peerjs` (production) and `broadcast` (test mode).
-- [x] Rebuilt UI to remove fragile component dependencies and improve mobile behavior.
-- [x] Added branded SVG assets (`brandmark.svg`, `favicon.svg`).
-- [x] Finalized linting, formatting, and pre-commit automation.
-- [x] Added and validated CI/CD workflow for GitHub Actions and Pages deployment.
-- [x] Added end-to-end browser tests with screenshot capture.
-- [x] Refreshed README and operations docs to match actual workflows.
+- Ticket files live in `docs/tasks/` as `NNNN-short-slug.md`.
+- Keep ticket status, acceptance criteria, and `updated` date current.
+- Update this index whenever ticket status changes.
 
-## Planned Next
+## Priority Queue
 
-- [ ] Add reconnect UX improvements for transient network drops.
-- [ ] Add host handoff recovery if host disconnects mid-session.
-- [ ] Add optional task board per room with synchronized state.
-- [ ] Add timer event history feed with phase transition audit log.
+- `P1`: [0002 - Investigate session render stall reports](tasks/0002-investigate-session-render-stall-report.md)
+- `P1`: [0003 - Make schedule updates non-destructive and explicit](tasks/0003-make-schedule-updates-safe.md)
+- `P1`: [0004 - Improve set remaining time UI](tasks/0004-improve-set-remaining-time-ui.md)
+- `P2`: [0001 - Remove brandmark artifact line](tasks/0001-remove-brandmark-artifact-line.md)
+- `P2`: [0005 - Show host fallback actions while connecting](tasks/0005-show-host-fallback-while-connecting.md)
+- `P2`: [0007 - Expand visual and interaction regression coverage](tasks/0007-expand-ui-regression-coverage.md)
+- `P3`: [0006 - Room theme customization (name, emoji, accent color)](tasks/0006-room-theme-customization.md)
+
+## Open Tickets
+
+- [ ] [0001 - Remove brandmark artifact line](tasks/0001-remove-brandmark-artifact-line.md)
+- [ ] [0002 - Investigate session render stall reports](tasks/0002-investigate-session-render-stall-report.md)
+- [ ] [0003 - Make schedule updates non-destructive and explicit](tasks/0003-make-schedule-updates-safe.md)
+- [ ] [0004 - Improve set remaining time UI](tasks/0004-improve-set-remaining-time-ui.md)
+- [ ] [0005 - Show host fallback actions while connecting](tasks/0005-show-host-fallback-while-connecting.md)
+- [ ] [0006 - Room theme customization (name, emoji, accent color)](tasks/0006-room-theme-customization.md)
+- [ ] [0007 - Expand visual and interaction regression coverage](tasks/0007-expand-ui-regression-coverage.md)
+
+## Completed Tickets
+
+- None yet in the per-ticket tracking system.

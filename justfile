@@ -18,6 +18,9 @@ preview:
 lint:
     pnpm lint
 
+lint-tickets:
+    pnpm lint:tickets
+
 format:
     pnpm format
 

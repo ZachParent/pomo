@@ -31,6 +31,7 @@ Use broadcast mode for repeatable automation and local multi-tab testing.
 ## Quality Gates
 
 ```bash
+just lint-tickets
 just lint
 just typecheck
 just test-unit
@@ -38,7 +39,7 @@ just test-e2e
 just build
 ```
 
-`just verify` runs all checks.
+`just verify` runs all checks (including ticket/index linting).
 
 ## Frontend Automation
 
@@ -67,6 +68,7 @@ just hooks-install
 - `/docs/testing.md`
 - `/docs/roadmap.md`
 - `/docs/tasks.md`
+- `/docs/tasks/`
 
 ## Deployment
 

@@ -8,6 +8,16 @@
 
 ## Test Layers
 
+## Documentation Consistency Checks
+
+- Script: `scripts/lint-tickets.mjs`
+- Command: `just lint-tickets`
+- Coverage:
+  - ticket files in `docs/tasks/` match required template structure
+  - ticket metadata values are valid
+  - `docs/tasks.md` links only existing tickets
+  - open/completed sections align with ticket status values
+
 ## Unit Tests
 
 - Framework: Vitest
