@@ -66,7 +66,7 @@
       <img src="{import.meta.env.BASE_URL}brandmark.svg" alt="Pomo logo" />
       <div>
         <p class="brand-kicker">Live Focus Rooms</p>
-        <h1>Pomo Relay</h1>
+        <h1>Pomo Collabo</h1>
       </div>
     </div>
     <button

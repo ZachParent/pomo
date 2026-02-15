@@ -2,7 +2,7 @@
 
 ## Overview
 
-Pomo Relay is a client-side Svelte app built with Vite and pnpm. Users join a room by URL and synchronize a collaborative timer through one of two transports:
+Pomo Collabo is a client-side Svelte app built with Vite and pnpm. Users join a room by URL and synchronize a collaborative timer through one of two transports:
 
 - `peerjs` for production cross-user connectivity.
 - `broadcast` for deterministic local multi-tab automation and e2e tests.

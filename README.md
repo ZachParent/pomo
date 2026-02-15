@@ -1,4 +1,4 @@
-# Pomo Relay
+# Pomo Collabo
 
 Collaborative Pomodoro rooms with direct links and synchronized timers.
 The UI is tuned for compact, single-screen workflows on both desktop and mobile.
