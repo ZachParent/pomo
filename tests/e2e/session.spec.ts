@@ -277,6 +277,8 @@ test("theme toggle updates and persists app theme selection", async ({ page }) =
   const themeToggle = page.getByRole("button", { name: "Switch to dark theme" });
 
   await expect(html).toHaveAttribute("data-theme", "light");
+  await expect(themeToggle.locator("svg")).toBeVisible();
+  await expect(themeToggle).not.toContainText(/sun|moon/i);
   await themeToggle.click();
   await expect(html).toHaveAttribute("data-theme", "dark");
 
