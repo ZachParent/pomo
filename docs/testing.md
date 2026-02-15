@@ -23,6 +23,11 @@
 
 - Framework: Vitest
 - Location: `src/**/*.test.ts`
+- Coverage threshold gate (`vitest.config.ts`):
+  - statements: `>= 97%`
+  - branches: `>= 92%`
+  - functions: `>= 100%`
+  - lines: `>= 97%`
 - Focus:
   - phase transitions
   - long-break interval behavior
@@ -40,17 +45,23 @@ just test-unit
 
 ### End-to-End Tests
 
-- Framework: Vitest + Puppeteer
-- Location: `tests/e2e/**/*.e2e.test.ts`
+- Framework: Playwright Test
+- Location: `tests/e2e/**/*.spec.ts`
 - Transport mode: `broadcast` (deterministic local sync)
 - Coverage:
-  - host flow from room initialization
-  - no-stall transition from work to break
-  - host/client synchronization in multi-page session
-  - active-phase duration-shortening warning + confirmation behavior
   - connecting-state host fallback controls
-  - room theme synchronization across participants
-  - screenshot capture for visual validation
+  - host lifecycle (start/pause/reset/leave)
+  - no-stall transition from work to break
+  - remaining-time editing and editor toggle behavior
+  - cycle settings and duration settings behavior
+  - active-phase duration-shortening warning + confirmation behavior
+  - host/client synchronization in multi-page sessions
+  - client-issued control requests (pause/time edits)
+  - room theme synchronization plus draft reset behavior
+  - host-only invite-link controls and clipboard copy behavior
+  - late-join synchronization behavior
+  - transport labeling and route assertions in broadcast mode
+  - copy-button timeout behavior and no-op theme submit behavior
 
 Run:
 
@@ -58,9 +69,10 @@ Run:
 just test-e2e
 ```
 
-Screenshots are emitted to:
+Reports and artifacts are emitted to:
 
-- `artifacts/screenshots/e2e`
+- `artifacts/playwright-report`
+- `test-results` (on failure, includes traces/videos/screenshots)
 
 ### Autonomous UI Exploration
 
@@ -70,7 +82,7 @@ Script:
 just explore-ui
 ```
 
-This runs a Puppeteer-driven journey and writes screenshots to:
+This runs a Playwright-driven journey and writes screenshots to:
 
 - `artifacts/screenshots/explore`
 

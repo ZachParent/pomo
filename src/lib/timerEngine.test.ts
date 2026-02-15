@@ -186,4 +186,62 @@ describe("timerEngine", () => {
     expect(displayFuture.progress).toBeLessThanOrEqual(1);
     expect(displayFuture.progress).toBeGreaterThanOrEqual(0);
   });
+
+  it("does not decrement when less than one second has elapsed", () => {
+    let state = createInitialTimerState(0, {
+      ...DEFAULT_DURATIONS,
+      workDurationSeconds: 10,
+    });
+    state = setTimeLeftState(state, 10, 0);
+    state = startTimerState(state, 0);
+
+    const synced = synchronizeTimerState(state, 500, true);
+    expect(synced.remainingSeconds).toBe(10);
+    expect(synced.updatedAtMs).toBe(0);
+  });
+
+  it("transitions immediately when starting with zero remaining work time", () => {
+    const state = createInitialTimerState(0, {
+      ...DEFAULT_DURATIONS,
+      shortBreakDurationSeconds: 7,
+    });
+
+    const started = startTimerState(
+      {
+        ...state,
+        remainingSeconds: 0,
+      },
+      1_000
+    );
+
+    expect(started.phase).toBe(TimerPhase.ShortBreak);
+    expect(started.remainingSeconds).toBe(7);
+    expect(started.isRunning).toBe(true);
+  });
+
+  it("pauses active timers and increments revision", () => {
+    let state = createInitialTimerState(0);
+    state = setTimeLeftState(state, 10, 0);
+    state = startTimerState(state, 0);
+
+    const paused = pauseTimerState(state, 1_000);
+    expect(paused.isRunning).toBe(false);
+    expect(paused.revision).toBeGreaterThan(state.revision);
+  });
+
+  it("increments revision when setting time left even if seconds are unchanged", () => {
+    const state = createInitialTimerState(0);
+    const sameState = setTimeLeftState(state, state.remainingSeconds, 0);
+    expect(sameState.remainingSeconds).toBe(state.remainingSeconds);
+    expect(sameState.revision).toBe(state.revision + 1);
+  });
+
+  it("keeps running timer active when start is requested twice", () => {
+    let state = createInitialTimerState(0);
+    state = setTimeLeftState(state, 10, 0);
+    state = startTimerState(state, 0);
+
+    const startedAgain = startTimerState(state, 0);
+    expect(startedAgain.isRunning).toBe(true);
+  });
 });

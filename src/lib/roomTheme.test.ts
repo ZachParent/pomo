@@ -27,6 +27,22 @@ describe("roomTheme", () => {
     expect(theme.accentColor).toBe("#0d7c8f");
   });
 
+  it("falls back to generic room name when every name input is blank", () => {
+    const theme = createRoomTheme("   ", {
+      displayName: "   ",
+    });
+
+    expect(theme.displayName).toBe("Focus Room");
+  });
+
+  it("limits emoji values to two code points", () => {
+    const theme = createRoomTheme("Team Focus", {
+      emoji: "😀😎🚀",
+    });
+
+    expect(theme.emoji).toBe("😀😎");
+  });
+
   it("merges patches without dropping existing values", () => {
     const original = createRoomTheme("Alpha", {
       emoji: "A",

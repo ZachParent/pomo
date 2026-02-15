@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import puppeteer from "puppeteer";
+import { chromium } from "@playwright/test";
 
 const host = "127.0.0.1";
 const port = 4173;
@@ -51,21 +51,14 @@ const startPreview = async () => {
   return preview;
 };
 
-const clearAndType = async (page, selector, value) => {
-  await page.click(selector, { clickCount: 3 });
-  await page.keyboard.press("Backspace");
-  await page.type(selector, value);
-};
-
 const main = async () => {
   mkdirSync(outputDir, { recursive: true });
 
   await runPnpm(["build"]);
   const preview = await startPreview();
 
-  const browser = await puppeteer.launch({
+  const browser = await chromium.launch({
     headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
   try {
@@ -82,13 +75,13 @@ const main = async () => {
       path: join(outputDir, "session-entry.png"),
       fullPage: true,
     });
-    await page.click('[data-testid="start-hosting"]');
+    await page.getByTestId("start-hosting").click();
     await page.waitForSelector('[data-testid="timer-shell"]', { timeout: 12_000 });
 
-    await clearAndType(page, '[data-testid="remaining-minutes"]', "0");
-    await clearAndType(page, '[data-testid="remaining-seconds"]', "3");
-    await page.click('[data-testid="apply-remaining"]');
-    await page.click('[data-testid="control-start"]');
+    await page.getByTestId("remaining-minutes").fill("0");
+    await page.getByTestId("remaining-seconds").fill("3");
+    await page.getByTestId("apply-remaining").click();
+    await page.getByTestId("control-start").click();
 
     await page.waitForFunction(
       () =>
@@ -106,7 +99,7 @@ const main = async () => {
   } finally {
     await browser.close();
     if (!preview.killed) {
-      preview.kill("SIGKILL");
+      preview.kill("SIGTERM");
     }
   }
 };

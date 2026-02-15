@@ -25,3 +25,4 @@ Last updated: 2026-02-15
 - [x] [0005 - Show host fallback actions while connecting](tasks/0005-show-host-fallback-while-connecting.md)
 - [x] [0006 - Room theme customization (name, emoji, accent color)](tasks/0006-room-theme-customization.md)
 - [x] [0007 - Expand visual and interaction regression coverage](tasks/0007-expand-ui-regression-coverage.md)
+- [x] [0008 - Migrate E2E automation to Playwright with strict coverage gates](tasks/0008-migrate-e2e-to-playwright.md)

@@ -43,7 +43,18 @@ just build
 
 ## Frontend Automation
 
-Puppeteer journey with screenshot capture:
+Playwright end-to-end regression suite:
+
+```bash
+just test-e2e
+```
+
+Artifacts:
+
+- `artifacts/playwright-report`
+- `test-results` (failure traces/videos/screenshots)
+
+Autonomous UI journey with screenshot capture:
 
 ```bash
 just explore-ui
@@ -52,7 +63,6 @@ just explore-ui
 Artifacts:
 
 - `artifacts/screenshots/explore`
-- `artifacts/screenshots/e2e`
 
 ## Pre-commit Hooks
 

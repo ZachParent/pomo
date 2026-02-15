@@ -29,6 +29,7 @@ describe("scheduleSafety", () => {
   it("clamps minutes to positive bounded seconds", () => {
     expect(minutesToSeconds(0)).toBe(60);
     expect(minutesToSeconds(6 * 60 + 100)).toBe(6 * 60 * 60);
+    expect(minutesToSeconds(Number.NaN)).toBe(60);
   });
 
   it("builds duration payloads from minutes", () => {
@@ -72,6 +73,38 @@ describe("scheduleSafety", () => {
         workMinutes: 8,
         shortBreakMinutes: 5,
         longBreakMinutes: 15,
+      })
+    ).toBe(false);
+  });
+
+  it("checks short-break phase duration when determining confirmation", () => {
+    const shortBreak = createDisplayState({
+      phase: TimerPhase.ShortBreak,
+      timeLeftSeconds: 4 * 60,
+      isRunning: true,
+    });
+
+    expect(
+      willShortenActivePhase(shortBreak, {
+        workMinutes: 25,
+        shortBreakMinutes: 3,
+        longBreakMinutes: 15,
+      })
+    ).toBe(true);
+  });
+
+  it("checks long-break phase duration when determining confirmation", () => {
+    const longBreak = createDisplayState({
+      phase: TimerPhase.LongBreak,
+      timeLeftSeconds: 4 * 60,
+      isRunning: true,
+    });
+
+    expect(
+      willShortenActivePhase(longBreak, {
+        workMinutes: 25,
+        shortBreakMinutes: 5,
+        longBreakMinutes: 6,
       })
     ).toBe(false);
   });
