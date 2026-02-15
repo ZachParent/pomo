@@ -28,6 +28,7 @@ interface ConnectOptions {
   mode?: TransportMode;
   timeoutMs?: number;
   roomTheme?: Partial<RoomThemeMetadata>;
+  preserveTimerState?: boolean;
 }
 
 interface P2PState {
@@ -118,6 +119,11 @@ type SessionActionMessage = TimerActionMessage | RoomThemeActionMessage;
 
 const HOST_HEARTBEAT_MS = 250;
 const DEFAULT_CONNECT_TIMEOUT_MS = 8_000;
+const CLIENT_HEALTHCHECK_MS = 750;
+const HOST_STALE_PROBE_MS = 2_000;
+const HOST_STALE_TAKEOVER_MS = 4_000;
+const AUTO_TAKEOVER_BASE_DELAY_MS = 320;
+const AUTO_TAKEOVER_DELAY_SPREAD_MS = 420;
 
 let runtimeToken = 0;
 let localPeer: Peer | null = null;
@@ -125,8 +131,12 @@ let clientConnection: DataConnection | null = null;
 let hostConnections: Record<string, DataConnection> = {};
 let localChannel: BroadcastChannel | null = null;
 let hostHeartbeatId: number | null = null;
+let clientHealthcheckId: number | null = null;
 let connectTimeoutId: number | null = null;
+let autoTakeoverTimeoutId: number | null = null;
 let lastHostBroadcastMs = 0;
+let lastHostSeenAtMs = 0;
+let lastHostProbeAtMs = 0;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
@@ -173,9 +183,25 @@ const clearHostHeartbeat = (): void => {
   }
 };
 
+const clearClientHealthcheck = (): void => {
+  if (clientHealthcheckId !== null) {
+    clearInterval(clientHealthcheckId);
+    clientHealthcheckId = null;
+  }
+};
+
+const clearAutoTakeoverTimeout = (): void => {
+  if (autoTakeoverTimeoutId !== null) {
+    clearTimeout(autoTakeoverTimeoutId);
+    autoTakeoverTimeoutId = null;
+  }
+};
+
 const disconnectResources = (): void => {
   clearConnectTimeout();
   clearHostHeartbeat();
+  clearClientHealthcheck();
+  clearAutoTakeoverTimeout();
 
   if (clientConnection) {
     try {
@@ -218,6 +244,8 @@ const beginRuntime = (): number => {
   runtimeToken += 1;
   disconnectResources();
   lastHostBroadcastMs = 0;
+  lastHostSeenAtMs = 0;
+  lastHostProbeAtMs = 0;
   return runtimeToken;
 };
 
@@ -243,6 +271,41 @@ const setConnectionTimeout = (
 };
 
 const channelNameForRoom = (roomId: string): string => `pomo-room-${roomId}`;
+
+const hashString = (value: string): number => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
+
+const noteHostSeen = (): void => {
+  lastHostSeenAtMs = Date.now();
+  lastHostProbeAtMs = 0;
+};
+
+const sendStateDiscoveryRequest = (): void => {
+  const state = get(p2pState);
+  if (!state.roomId || !state.myId) {
+    return;
+  }
+
+  const message = {
+    type: "REQUEST_STATE",
+    senderId: state.myId,
+  } satisfies SessionDiscoveryMessage;
+
+  if (state.mode === "peerjs") {
+    if (clientConnection?.open) {
+      clientConnection.send(message);
+    }
+    return;
+  }
+
+  localChannel?.postMessage(message);
+};
 
 const sendStateToPeerConnection = (connection: DataConnection): void => {
   if (!connection.open) {
@@ -471,6 +534,8 @@ const handleClientSessionMessage = (message: SessionMessage, token: number): voi
   }
 
   if (message.type === "STATE_UPDATE") {
+    noteHostSeen();
+    clearAutoTakeoverTimeout();
     setTimerStateFromRemote(message.payload);
     clearConnectTimeout();
     p2pState.update((state) => ({
@@ -481,15 +546,20 @@ const handleClientSessionMessage = (message: SessionMessage, token: number): voi
       error: null,
       canBecomeHost: false,
     }));
+    startClientHealthcheck(token);
     return;
   }
 
   if (message.type === "ROOM_THEME_UPDATE") {
+    noteHostSeen();
+    clearAutoTakeoverTimeout();
     applyRemoteRoomTheme(message.payload.theme, message.payload.revision);
     return;
   }
 
   if (message.type === "HOST_PONG") {
+    noteHostSeen();
+    clearAutoTakeoverTimeout();
     clearConnectTimeout();
     p2pState.update((state) => ({
       ...state,
@@ -499,6 +569,7 @@ const handleClientSessionMessage = (message: SessionMessage, token: number): voi
       error: null,
       canBecomeHost: false,
     }));
+    startClientHealthcheck(token);
   }
 };
 
@@ -570,7 +641,109 @@ const startHostHeartbeat = (token: number): void => {
   }, HOST_HEARTBEAT_MS);
 };
 
+const promoteCurrentClientToHost = (): void => {
+  const state = get(p2pState);
+  if (!state.roomId || state.isHost) {
+    return;
+  }
+
+  const mode = state.mode;
+  const roomId = state.roomId;
+  const roomTheme = state.roomTheme;
+  const roomThemeRevision = state.roomThemeRevision;
+
+  synchronizeTimer(Date.now());
+  const token = beginRuntime();
+
+  p2pState.set({
+    ...initialState,
+    mode,
+    roomId,
+    myId: mode === "broadcast" ? roomId : null,
+    hostId: roomId,
+    roomTheme,
+    roomThemeRevision,
+    isHost: true,
+    isConnecting: true,
+    canBecomeHost: false,
+    error: null,
+  });
+
+  if (mode === "broadcast") {
+    startBroadcastHost(token, roomId);
+    return;
+  }
+
+  startPeerHost(token, roomId);
+};
+
+const scheduleAutoHostTakeover = (): void => {
+  clearAutoTakeoverTimeout();
+
+  const state = get(p2pState);
+  if (!state.roomId || state.isHost || state.isConnected || !state.canBecomeHost) {
+    return;
+  }
+
+  const delayMs =
+    AUTO_TAKEOVER_BASE_DELAY_MS +
+    (hashString(state.myId ?? state.roomId) % AUTO_TAKEOVER_DELAY_SPREAD_MS);
+  const scheduledToken = runtimeToken;
+
+  autoTakeoverTimeoutId = window.setTimeout(() => {
+    autoTakeoverTimeoutId = null;
+
+    if (scheduledToken !== runtimeToken) {
+      return;
+    }
+
+    const current = get(p2pState);
+    if (
+      !current.roomId ||
+      current.isHost ||
+      current.isConnected ||
+      !current.canBecomeHost
+    ) {
+      return;
+    }
+
+    promoteCurrentClientToHost();
+  }, delayMs);
+};
+
+const startClientHealthcheck = (token: number): void => {
+  if (clientHealthcheckId !== null) {
+    return;
+  }
+
+  noteHostSeen();
+  clientHealthcheckId = window.setInterval(() => {
+    if (token !== runtimeToken) {
+      return;
+    }
+
+    const state = get(p2pState);
+    if (!state.roomId || !state.myId || state.isHost) {
+      return;
+    }
+
+    const now = Date.now();
+
+    if (now - lastHostSeenAtMs >= HOST_STALE_PROBE_MS) {
+      if (now - lastHostProbeAtMs >= HOST_STALE_PROBE_MS) {
+        sendStateDiscoveryRequest();
+        lastHostProbeAtMs = now;
+      }
+    }
+
+    if (state.isConnected && now - lastHostSeenAtMs >= HOST_STALE_TAKEOVER_MS) {
+      markClientDisconnected("Host became unavailable.");
+    }
+  }, CLIENT_HEALTHCHECK_MS);
+};
+
 const markClientDisconnected = (message: string): void => {
+  clearConnectTimeout();
   p2pState.update((state) => ({
     ...state,
     isConnected: false,
@@ -578,6 +751,7 @@ const markClientDisconnected = (message: string): void => {
     error: message,
     canBecomeHost: true,
   }));
+  scheduleAutoHostTakeover();
 };
 
 const attachClientPeerConnection = (
@@ -599,11 +773,9 @@ const attachClientPeerConnection = (
       error: null,
       canBecomeHost: false,
     }));
-
-    connection.send({
-      type: "REQUEST_STATE",
-      senderId: get(p2pState).myId ?? "unknown",
-    } satisfies SessionDiscoveryMessage);
+    noteHostSeen();
+    startClientHealthcheck(token);
+    sendStateDiscoveryRequest();
   });
 
   connection.on("data", (data) => {
@@ -684,11 +856,8 @@ const connectToBroadcastHost = (
   };
 
   setConnectionTimeout(token, timeoutMs, `Timed out connecting to room "${roomId}".`);
-
-  channel.postMessage({
-    type: "REQUEST_STATE",
-    senderId: get(p2pState).myId ?? "unknown",
-  } satisfies SessionDiscoveryMessage);
+  startClientHealthcheck(token);
+  sendStateDiscoveryRequest();
 };
 
 const connectToPeerHost = (token: number, roomId: string, timeoutMs: number): void => {
@@ -809,12 +978,27 @@ const startPeerHost = (token: number, roomId: string): void => {
       return;
     }
 
+    const message = normalizeError(error);
+    const idTaken = /unavailable-id|id.*taken|already taken/i.test(message);
+    if (idTaken) {
+      const state = get(p2pState);
+      if (state.roomId) {
+        connectToHost(state.roomId, {
+          mode: "peerjs",
+          timeoutMs: DEFAULT_CONNECT_TIMEOUT_MS,
+          roomTheme: state.roomTheme,
+          preserveTimerState: true,
+        });
+        return;
+      }
+    }
+
     p2pState.update((state) => ({
       ...state,
       isConnecting: false,
       isConnected: false,
       isHost: false,
-      error: normalizeError(error),
+      error: message,
       canBecomeHost: true,
     }));
   });
@@ -842,7 +1026,9 @@ export const connectToHost = (roomId: string, options: ConnectOptions = {}): voi
   });
   const token = beginRuntime();
   const clientId = makeClientId();
-  resetTimerStore(Date.now());
+  if (!options.preserveTimerState) {
+    resetTimerStore(Date.now());
+  }
 
   p2pState.set({
     ...initialState,

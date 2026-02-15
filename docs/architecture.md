@@ -32,7 +32,7 @@ Room sessions now include synchronized room theme metadata (`displayName`, `emoj
 
 4. Collaboration Transport
 
-- `src/lib/p2pStore.ts`: runtime session orchestration, host heartbeats, timer action forwarding, timer state broadcast, room theme patch/update synchronization.
+- `src/lib/p2pStore.ts`: runtime session orchestration, host heartbeats, client host-health probing, automatic host takeover, timer action forwarding, timer state broadcast, room theme patch/update synchronization.
 
 5. UI Integrations
 
@@ -92,6 +92,7 @@ Host synchronization uses elapsed-time integration, not naive decrement loops. T
 - Room theme updates are sanitized and ignored when stale (`roomThemeRevision` ordering).
 - Settings are hidden by default and rendered as a modal (desktop) / bottom sheet (mobile) to keep the timer surface one-screen dense.
 - Theme edits (name, accent, emoji) dispatch immediately without save/cancel confirmation state.
+- Connected clients probe host liveness and automatically promote to host when stale-host thresholds are exceeded, preserving local timer state across takeover.
 
 ## Assets and Branding
 

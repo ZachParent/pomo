@@ -63,6 +63,7 @@ just test-unit
   - alert sound preference selection and persistence
   - mobile viewport settings-sheet behavior and control visibility
   - host/client synchronization in multi-page sessions
+  - automatic host failover after host disconnect with timer continuity assertions
   - client-issued control requests (pause/time edits)
   - room theme synchronization plus draft reset behavior
   - host-only invite-link controls and clipboard copy behavior

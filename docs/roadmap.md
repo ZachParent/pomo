@@ -13,12 +13,13 @@
 - Ticket `0009`: tightened UI density for desktop/mobile and replaced textual sun/moon theme labels with icons.
 - Ticket `0010`: hardened phase alert reliability for stalled tabs, gated pre-connect theme editing, and added persistent alert sound selection.
 - Ticket `0011`: moved advanced controls behind responsive settings modal/sheet, switched room theme editing to instant sync updates, and integrated out-of-the-box emoji picking.
+- Ticket `0012`: added automatic host failover with client liveness probes and timer-continuity takeover coverage.
 
 ## Near-Term Reliability
 
 - Host handoff protocol:
-  - Elect a backup host when current host disconnects.
-  - Resume timer from latest consensus state.
+  - Elect a backup host across many clients with explicit deterministic ordering.
+  - Resolve simultaneous takeover contenders with stronger consensus semantics.
 - Reconnect flow:
   - Auto-retry join with bounded exponential backoff.
   - Clearer UI messaging for broker/network outages.

@@ -211,6 +211,44 @@ test("synchronizes timer updates and client-issued controls across participants"
   }
 });
 
+test("client auto-promotes to host when host disconnects without timer reset", async ({
+  page,
+  context,
+}) => {
+  const roomName = makeRoomName("auto-host");
+  const hostPage = await context.newPage();
+
+  try {
+    await startHostingRoom(hostPage, roomName);
+    await joinHostedRoom(page, roomName);
+
+    await setRemaining(hostPage, 0, 8);
+    await hostPage.getByTestId("control-start").click();
+    await expect
+      .poll(async () => parseClockTextToSeconds(await timerText(page)))
+      .toBeLessThanOrEqual(8);
+
+    const beforeDisconnect = parseClockTextToSeconds(await timerText(page));
+    expect(beforeDisconnect).toBeGreaterThanOrEqual(2);
+    await hostPage.close();
+
+    await expect(page.getByTestId("session-status")).toContainText(
+      "Hosting this room.",
+      {
+        timeout: 10_000,
+      }
+    );
+    await expect(page.getByTestId("control-pause")).toBeVisible();
+    await expect
+      .poll(async () => parseClockTextToSeconds(await timerText(page)))
+      .toBeLessThan(beforeDisconnect);
+  } finally {
+    if (!hostPage.isClosed()) {
+      await hostPage.close();
+    }
+  }
+});
+
 test("room theme updates apply immediately and sync to participants", async ({
   page,
   context,

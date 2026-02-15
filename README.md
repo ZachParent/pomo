@@ -4,6 +4,7 @@ Collaborative Pomodoro rooms with direct links and synchronized timers.
 The UI is tuned for compact, single-screen workflows on both desktop and mobile.
 Per-user alert sounds are selectable in-session and saved locally.
 Advanced timer/theme controls are available via an in-session settings modal/sheet, including full emoji picking.
+Active clients automatically take over hosting if the current host disconnects.
 
 ## Stack
 
