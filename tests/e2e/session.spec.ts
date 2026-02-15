@@ -28,14 +28,36 @@ const sessionAccent = async (page: Page): Promise<string> =>
       .toLowerCase()
   );
 
+const openSettings = async (page: Page): Promise<void> => {
+  const modal = page.getByTestId("settings-modal");
+  if (await modal.isVisible().catch(() => false)) {
+    return;
+  }
+
+  await page.getByTestId("open-settings").click();
+  await expect(modal).toBeVisible();
+};
+
+const closeSettings = async (page: Page): Promise<void> => {
+  const modal = page.getByTestId("settings-modal");
+  if (!(await modal.isVisible().catch(() => false))) {
+    return;
+  }
+
+  await page.getByTestId("close-settings").click();
+  await expect(modal).toHaveCount(0);
+};
+
 const setRemaining = async (
   page: Page,
   minutes: number,
   seconds: number
 ): Promise<void> => {
+  await openSettings(page);
   await page.getByTestId("remaining-minutes").fill(String(minutes));
   await page.getByTestId("remaining-seconds").fill(String(seconds));
   await page.getByTestId("apply-remaining").click();
+  await closeSettings(page);
 };
 
 const startHostingRoom = async (page: Page, roomName: string): Promise<void> => {
@@ -72,8 +94,6 @@ test("shows host fallback controls while connecting to an empty room", async ({
   );
   await expect(page.getByTestId("session-status")).toContainText("You can host now");
   await expect(page.getByTestId("connecting-host-fallback")).toBeVisible();
-  await expect(page.getByTestId("room-theme-locked")).toBeVisible();
-  await expect(page.getByTestId("room-display-name-input")).toHaveCount(0);
   await expect(page.getByTestId("timer-shell")).toHaveCount(0);
 });
 
@@ -116,6 +136,7 @@ test("requires confirmation before shortening an active phase via durations", as
   await startHostingRoom(page, makeRoomName("durations"));
 
   await page.getByTestId("control-start").click();
+  await openSettings(page);
   await page.locator("#work-minutes").fill("1");
 
   await page.getByTestId("apply-durations").click();
@@ -132,10 +153,12 @@ test("requires confirmation before shortening an active phase via durations", as
   await expect
     .poll(async () => parseClockTextToSeconds(await timerText(page)))
     .toBeLessThanOrEqual(60);
+  await closeSettings(page);
 });
 
 test("applies cycle settings and clamps invalid values", async ({ page }) => {
   await startHostingRoom(page, makeRoomName("cycle"));
+  await openSettings(page);
 
   await page.locator("#cycle-count").fill("9");
   await page.locator("#long-break-interval").fill("3");
@@ -146,17 +169,19 @@ test("applies cycle settings and clamps invalid values", async ({ page }) => {
   await page.locator("#long-break-interval").fill("1");
   await page.getByTestId("apply-cycle-settings").click();
   await expect(page.locator(".cycle")).toContainText("Cycle 0 of 1");
+  await closeSettings(page);
 });
 
-test("remaining-time editor fields are always visible without hover", async ({
-  page,
-}) => {
-  await startHostingRoom(page, makeRoomName("editor"));
+test("settings are hidden by default and open as a modal", async ({ page }) => {
+  await startHostingRoom(page, makeRoomName("settings-modal"));
 
+  await expect(page.getByTestId("settings-modal")).toHaveCount(0);
+  await page.getByTestId("open-settings").click();
+  await expect(page.getByTestId("settings-modal")).toBeVisible();
   await expect(page.getByTestId("remaining-editor-panel")).toBeVisible();
-  await expect(page.getByTestId("remaining-minutes")).toBeVisible();
-  await expect(page.getByTestId("remaining-seconds")).toBeVisible();
-  await expect(page.getByTestId("toggle-remaining-editor")).toHaveCount(0);
+
+  await page.getByTestId("close-settings").click();
+  await expect(page.getByTestId("settings-modal")).toHaveCount(0);
 });
 
 test("synchronizes timer updates and client-issued controls across participants", async ({
@@ -186,54 +211,53 @@ test("synchronizes timer updates and client-issued controls across participants"
   }
 });
 
-test("synchronizes room theme changes and supports draft reset", async ({
+test("room theme updates apply immediately and sync to participants", async ({
   page,
   context,
 }) => {
-  const roomName = makeRoomName("theme");
+  const roomName = makeRoomName("theme-live");
   await startHostingRoom(page, roomName);
   const clientPage = await context.newPage();
   const updatedDisplayName = "Deep Focus Board";
-  const updatedEmoji = "🚀";
   const updatedAccent = "#123abc";
+  const updatedEmoji = "🧪";
 
   try {
     await joinHostedRoom(clientPage, roomName);
 
+    await openSettings(page);
     await page.getByTestId("room-display-name-input").fill(updatedDisplayName);
-    await page.getByTestId("room-emoji-input").fill(updatedEmoji);
     await page.getByTestId("room-accent-input").fill(updatedAccent);
-    await page.getByRole("button", { name: "Save Theme" }).click();
 
-    await expect(page.getByTestId("room-display-name")).toContainText(
-      updatedDisplayName
-    );
+    await page.getByTestId("emoji-trigger").click();
+    await expect(page.getByTestId("emoji-picker-panel")).toBeVisible();
+    await page.locator("emoji-picker").evaluate((element) => {
+      element.dispatchEvent(
+        new CustomEvent("emoji-click", {
+          detail: { unicode: "🧪" },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    });
+
+    await expect
+      .poll(
+        async () => (await page.getByTestId("room-display-name").textContent()) ?? ""
+      )
+      .toContain(updatedDisplayName);
+    await expect
+      .poll(
+        async () =>
+          (await clientPage.getByTestId("room-display-name").textContent()) ?? ""
+      )
+      .toContain(updatedDisplayName);
     await expect(page.getByTestId("room-display-name")).toContainText(updatedEmoji);
-    await expect(clientPage.getByTestId("room-display-name")).toContainText(
-      updatedDisplayName
-    );
     await expect(clientPage.getByTestId("room-display-name")).toContainText(
       updatedEmoji
     );
     await expect.poll(async () => sessionAccent(page)).toBe(updatedAccent);
     await expect.poll(async () => sessionAccent(clientPage)).toBe(updatedAccent);
-
-    await page.getByTestId("room-display-name-input").fill("Scratch Draft");
-    await page.getByTestId("room-emoji-input").fill("🧪");
-    await page.getByTestId("room-accent-input").fill("#ff0000");
-    await page
-      .locator("form.room-theme-form")
-      .getByRole("button", { name: "Reset" })
-      .click();
-
-    await expect(page.getByTestId("room-display-name-input")).toHaveValue(
-      updatedDisplayName
-    );
-    await expect(page.getByTestId("room-emoji-input")).toHaveValue(updatedEmoji);
-    await expect(page.getByTestId("room-accent-input")).toHaveValue(updatedAccent);
-    await expect(clientPage.getByTestId("room-display-name")).toContainText(
-      updatedDisplayName
-    );
   } finally {
     await clientPage.close();
   }
@@ -397,18 +421,18 @@ test("status includes transport label in broadcast mode", async ({ page }) => {
 
 test("can set remaining seconds within allowed bounds", async ({ page }) => {
   await startHostingRoom(page, makeRoomName("seconds-clamp"));
-
-  await page.getByTestId("remaining-minutes").fill("0");
-  await page.getByTestId("remaining-seconds").fill("25");
-  await page.getByTestId("apply-remaining").click();
+  await setRemaining(page, 0, 25);
   await expect(page.getByTestId("timer-display")).toHaveText("00:25");
 });
 
 test("changing durations updates future reset value", async ({ page }) => {
   await startHostingRoom(page, makeRoomName("duration-reset"));
 
+  await openSettings(page);
   await page.locator("#work-minutes").fill("13");
   await page.getByTestId("apply-durations").click();
+  await closeSettings(page);
+
   await page.getByTestId("control-reset").click();
   await expect(page.getByTestId("timer-display")).toHaveText("13:00");
 });
@@ -418,9 +442,12 @@ test("cycle settings update is reflected in cycle label without starting timer",
 }) => {
   await startHostingRoom(page, makeRoomName("cycle-label"));
 
+  await openSettings(page);
   await page.locator("#cycle-count").fill("1");
   await page.locator("#long-break-interval").fill("5");
   await page.getByTestId("apply-cycle-settings").click();
+  await closeSettings(page);
+
   await expect(page.locator(".cycle")).toContainText("Cycle 1 of 5");
 });
 
@@ -435,12 +462,15 @@ test("duration confirmation warning clears after remote timer revision sync", as
   try {
     await joinHostedRoom(clientPage, roomName);
     await page.getByTestId("control-start").click();
+
+    await openSettings(page);
     await page.locator("#work-minutes").fill("1");
     await page.getByTestId("apply-durations").click();
     await expect(page.getByTestId("schedule-warning")).toBeVisible();
 
     await setRemaining(clientPage, 0, 30);
     await expect(page.getByTestId("schedule-warning")).toHaveCount(0);
+    await closeSettings(page);
   } finally {
     await clientPage.close();
   }
@@ -463,21 +493,12 @@ test("copy button label resets after timeout", async ({ page, context, baseURL }
   await expect(copyButton).toHaveText("Copy Invite Link");
 });
 
-test("theme form submit is a no-op when no values changed", async ({ page }) => {
-  await startHostingRoom(page, makeRoomName("theme-noop"));
-
-  const headingBefore = await page.getByTestId("room-display-name").textContent();
-  await page.getByRole("button", { name: "Save Theme" }).click();
-  await expect(page.getByTestId("room-display-name")).toHaveText(
-    (headingBefore ?? "").trim()
-  );
-});
-
 test("alert sound preference can be selected and persists after reload", async ({
   page,
 }) => {
   await startHostingRoom(page, makeRoomName("alert-sound"));
 
+  await openSettings(page);
   const soundSelect = page.getByTestId("alert-sound-select");
   await expect(soundSelect).toBeVisible();
   await soundSelect.selectOption("bell");
@@ -493,7 +514,41 @@ test("alert sound preference can be selected and persists after reload", async (
   await expect(page.getByTestId("connecting-host-fallback")).toBeVisible();
   await page.getByTestId("start-hosting").click();
   await expect(page.getByTestId("timer-shell")).toBeVisible();
+
+  await openSettings(page);
   await expect(page.getByTestId("alert-sound-select")).toHaveValue("bell");
+});
+
+test("settings help is behind tooltip control", async ({ page }) => {
+  await startHostingRoom(page, makeRoomName("settings-help"));
+
+  await openSettings(page);
+  await expect(page.getByTestId("settings-help-tooltip")).toHaveCount(0);
+  await page.getByTestId("settings-help").click();
+  await expect(page.getByTestId("settings-help-tooltip")).toBeVisible();
+  await page.getByTestId("settings-help").click();
+  await expect(page.getByTestId("settings-help-tooltip")).toHaveCount(0);
+});
+
+test("mobile layout keeps primary timer controls visible and settings opens as sheet", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await startHostingRoom(page, makeRoomName("mobile-sheet"));
+
+  const timerDisplayBox = await page.getByTestId("timer-display").boundingBox();
+  const settingsButtonBox = await page.getByTestId("open-settings").boundingBox();
+
+  expect(timerDisplayBox).not.toBeNull();
+  expect(settingsButtonBox).not.toBeNull();
+  expect(
+    (settingsButtonBox?.y ?? 9_999) + (settingsButtonBox?.height ?? 0)
+  ).toBeLessThan(844);
+
+  await openSettings(page);
+  await expect(page.getByTestId("settings-modal")).toBeVisible();
+  await page.getByTestId("close-settings").click();
+  await expect(page.getByTestId("settings-modal")).toHaveCount(0);
 });
 
 const closeExtraPages = async (context: BrowserContext): Promise<void> => {

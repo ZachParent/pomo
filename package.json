@@ -20,6 +20,7 @@
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
+    "emoji-picker-element": "^1.29.0",
     "peerjs": "^1.5.5",
     "svelte-routing": "^2.13.0"
   },

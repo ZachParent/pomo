@@ -15,8 +15,8 @@ Room sessions now include synchronized room theme metadata (`displayName`, `emoj
 
 - `src/App.svelte`: shell, pathname-based view selection, compact layout structure, icon-based theme toggle.
 - `src/lib/Home.svelte`: room entry and route handoff.
-- `src/lib/PomodoroSession.svelte`: connection lifecycle, host/join fallback actions, connection-gated room theme form, session-level theme styling.
-- `src/lib/PomodoroTimer.svelte`: timer rendering, controls, schedule editing safety messaging, hidden-tab-safe alerts, and per-user sound selection.
+- `src/lib/PomodoroSession.svelte`: connection lifecycle, host/join fallback actions, and session-level theme styling.
+- `src/lib/PomodoroTimer.svelte`: timer rendering, compact primary controls, responsive settings modal/sheet, live room-theme editing, hidden-tab-safe alerts, and per-user sound selection.
 - `src/lib/navigation.ts`: lightweight programmatic navigation helper that pushes/replaces history and emits `popstate` to keep app view state synchronized.
 
 2. Timer Core
@@ -33,6 +33,10 @@ Room sessions now include synchronized room theme metadata (`displayName`, `emoj
 4. Collaboration Transport
 
 - `src/lib/p2pStore.ts`: runtime session orchestration, host heartbeats, timer action forwarding, timer state broadcast, room theme patch/update synchronization.
+
+5. UI Integrations
+
+- `emoji-picker-element`: lazy-loaded web component used inside settings for full emoji selection.
 
 5. Browser Regression Harness
 
@@ -86,6 +90,8 @@ Host synchronization uses elapsed-time integration, not naive decrement loops. T
 - Host heartbeat reconciles delayed timers and rebroadcasts canonical state.
 - UI projects timer display from state+clock to avoid visual freezes and includes a phase-transition fallback path for alert feedback when token commits lag behind projected transitions.
 - Room theme updates are sanitized and ignored when stale (`roomThemeRevision` ordering).
+- Settings are hidden by default and rendered as a modal (desktop) / bottom sheet (mobile) to keep the timer surface one-screen dense.
+- Theme edits (name, accent, emoji) dispatch immediately without save/cancel confirmation state.
 
 ## Assets and Branding
 

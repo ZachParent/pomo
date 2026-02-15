@@ -6,14 +6,9 @@
     disconnectPeer,
     initializeHost,
     p2pState,
-    requestSetRoomTheme,
     type TransportMode,
   } from "./p2pStore";
-  import {
-    deriveRoomThemeTokens,
-    toRoomThemeStyle,
-    type RoomThemeMetadata,
-  } from "./roomTheme";
+  import { deriveRoomThemeTokens, toRoomThemeStyle } from "./roomTheme";
   import { theme } from "./themeStore";
   import { normalizeBasePath, withBasePath } from "./basePath";
   import { navigate } from "./navigation";
@@ -28,11 +23,6 @@
   let copiedLink = false;
   let copiedTimeoutId: number | null = null;
   let sessionBootstrapped = false;
-
-  let displayNameInput = roomName;
-  let emojiInput = "🍅";
-  let accentColorInput = "#0d7c8f";
-  let lastThemeRevision = -1;
 
   const getModeFromQuery = (): TransportMode => {
     if (import.meta.env.SSR) {
@@ -65,20 +55,12 @@
     }
   };
 
-  const toThemePatch = (): Partial<RoomThemeMetadata> => ({
-    displayName: displayNameInput,
-    emoji: emojiInput,
-    accentColor: accentColorInput,
-  });
-
   const connect = (): void => {
     connectToHost(effectiveRoomId, {
       mode,
       timeoutMs: 8_000,
       roomTheme: {
         displayName: roomName,
-        emoji: emojiInput,
-        accentColor: accentColorInput,
       },
     });
   };
@@ -94,13 +76,6 @@
     clearCopiedTimeout();
     disconnectPeer();
   });
-
-  $: if ($p2pState.roomThemeRevision !== lastThemeRevision) {
-    displayNameInput = $p2pState.roomTheme.displayName;
-    emojiInput = $p2pState.roomTheme.emoji;
-    accentColorInput = $p2pState.roomTheme.accentColor;
-    lastThemeRevision = $p2pState.roomThemeRevision;
-  }
 
   $: sessionThemeTokens = deriveRoomThemeTokens(
     $p2pState.roomTheme.accentColor,
@@ -119,23 +94,12 @@
       mode,
       roomTheme: {
         displayName: roomName,
-        ...toThemePatch(),
       },
     });
   };
 
   const retryConnection = (): void => {
     connect();
-  };
-
-  const applyRoomTheme = (): void => {
-    requestSetRoomTheme(toThemePatch());
-  };
-
-  const resetThemeDraft = (): void => {
-    displayNameInput = $p2pState.roomTheme.displayName;
-    emojiInput = $p2pState.roomTheme.emoji;
-    accentColorInput = $p2pState.roomTheme.accentColor;
   };
 
   const copySessionLink = async (): Promise<void> => {
@@ -172,54 +136,6 @@
     </div>
     <button type="button" on:click={leaveSession}>Leave</button>
   </div>
-
-  {#if $p2pState.isConnected}
-    <form class="room-theme-form" on:submit|preventDefault={applyRoomTheme}>
-      <h3>Room Theme</h3>
-      <div class="room-theme-grid">
-        <label>
-          Display Name
-          <input
-            data-testid="room-display-name-input"
-            bind:value={displayNameInput}
-            maxlength="48"
-            autocomplete="off"
-          />
-        </label>
-        <label>
-          Emoji
-          <input
-            data-testid="room-emoji-input"
-            bind:value={emojiInput}
-            maxlength="8"
-            autocomplete="off"
-          />
-        </label>
-        <label>
-          Accent Color
-          <input
-            data-testid="room-accent-input"
-            bind:value={accentColorInput}
-            type="color"
-          />
-        </label>
-      </div>
-      <div class="room-theme-actions">
-        <button type="submit" class="primary">Save Theme</button>
-        <button type="button" on:click={resetThemeDraft}>Reset</button>
-      </div>
-    </form>
-  {:else}
-    <section
-      class="room-theme-form room-theme-form-locked"
-      data-testid="room-theme-locked"
-    >
-      <h3>Room Theme</h3>
-      <p class="editor-note">
-        Theme controls unlock after you connect to a host or start hosting this room.
-      </p>
-    </section>
-  {/if}
 
   {#if !sessionBootstrapped}
     <div class="status status-waiting" data-testid="session-status">

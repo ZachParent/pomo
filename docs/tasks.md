@@ -24,3 +24,4 @@ Last updated: 2026-02-15
 - [x] [0008 - Migrate E2E automation to Playwright with strict coverage gates](tasks/0008-migrate-e2e-to-playwright.md)
 - [x] [0009 - Densify default layout and replace textual theme glyphs](tasks/0009-densify-layout-and-theme-icons.md)
 - [x] [0010 - Harden alerts and add sound selection](tasks/0010-harden-alerts-and-add-sound-selection.md)
+- [x] [0011 - Consolidate settings modal and live theme editing](tasks/0011-consolidate-settings-modal-and-live-theme-editing.md)

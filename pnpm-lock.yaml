@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      emoji-picker-element:
+        specifier: ^1.29.0
+        version: 1.29.0
       peerjs:
         specifier: ^1.5.5
         version: 1.5.5
@@ -801,6 +804,9 @@ packages:
     resolution: {integrity: sha512-pGjwhsmsp4kL2RTz08wcOlGN83otlqHeD/Z5T8GXZB+/YcpQ/dgo+lbU8ZsGxV0HIvqqxo9l7mqYwyYMD9bKDg==}
     engines: {node: '>=0.10'}
     hasBin: true
+
+  emoji-picker-element@1.29.0:
+    resolution: {integrity: sha512-lQm8YayfwIP5j+Xe1O2Fjul7hv2b4spPS16X99O4qKQdzDQaEeiAqqYaRONHncewcpisUf6qGFJkhM2G3riEdA==}
 
   es-module-lexer@1.7.0:
     resolution: {integrity: sha512-jEQoCwk8hyb2AZziIOLhDqpm5+2ww5uIE6lkO/6jcOCusfk6LhMHpXXfBLXTZ7Ydyt0j4VoUQv6uGNYbdW+kBA==}
@@ -2073,6 +2079,8 @@ snapshots:
 
   detect-libc@1.0.3:
     optional: true
+
+  emoji-picker-element@1.29.0: {}
 
   es-module-lexer@1.7.0: {}
 

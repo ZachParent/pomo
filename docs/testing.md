@@ -52,13 +52,16 @@ just test-unit
 - Coverage:
   - home route renders room controls immediately on first load (no theme-toggle workaround required)
   - connecting-state host fallback controls
-  - pre-connect theme controls are shown as locked/non-actionable
   - host lifecycle (start/pause/reset/leave)
   - no-stall transition from work to break
-  - remaining-time editing is explicit (non-hover) and always directly actionable
+  - settings surface stays hidden by default and opens via a modal/sheet action
+  - remaining-time editing is available inside settings modal/sheet
+  - settings help text appears behind an explicit `?` tooltip control
   - cycle settings and duration settings behavior
   - active-phase duration-shortening warning + confirmation behavior
+  - room theme edits apply immediately without save/cancel, including emoji picker events
   - alert sound preference selection and persistence
+  - mobile viewport settings-sheet behavior and control visibility
   - host/client synchronization in multi-page sessions
   - client-issued control requests (pause/time edits)
   - room theme synchronization plus draft reset behavior

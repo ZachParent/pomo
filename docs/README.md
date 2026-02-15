@@ -7,3 +7,4 @@
 - `docs/testing.md`: Unit, e2e, and screenshot validation strategy.
 - `docs/roadmap.md`: Future improvements and product ideas.
 - `docs/operations.md`: Runbook for local development, quality checks, and deployment.
+- `docs/ui-story/`: SVG storyboard iterations for UI flow proposals and approval.

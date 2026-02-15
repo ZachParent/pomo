@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1280" viewBox="0 0 720 1280" role="img" aria-labelledby="title desc">
+  <title id="title">UI Story 05 - Mobile settings sheet</title>
+  <desc id="desc">Material-like bottom sheet with close affordance, tooltip icon, and full emoji picker access.</desc>
+
+  <rect width="720" height="1280" fill="#162127" opacity="0.65"/>
+
+  <rect x="56" y="320" width="608" height="936" rx="28" fill="#ffffff" stroke="#d7ddd9" stroke-width="3"/>
+  <rect x="306" y="340" width="108" height="8" rx="4" fill="#d7ddd9"/>
+
+  <text x="96" y="392" font-family="Arial, sans-serif" font-size="32" fill="#1f2a2e" font-weight="700">Room Settings</text>
+
+  <rect x="462" y="362" width="36" height="36" rx="18" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="474" y="387" font-family="Arial, sans-serif" font-size="21" fill="#516067" font-weight="700">?</text>
+
+  <rect x="586" y="356" width="42" height="42" rx="10" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="601" y="384" font-family="Arial, sans-serif" font-size="24" fill="#1f2a2e" font-weight="700">×</text>
+
+  <rect x="96" y="456" width="528" height="60" rx="12" fill="#f4efe4" stroke="#d7ddd9"/>
+  <text x="130" y="494" font-family="Arial, sans-serif" font-size="22" fill="#1f2a2e" font-weight="700">Theme</text>
+  <text x="274" y="494" font-family="Arial, sans-serif" font-size="22" fill="#516067">Timer</text>
+  <text x="392" y="494" font-family="Arial, sans-serif" font-size="22" fill="#516067">Sound</text>
+
+  <text x="96" y="564" font-family="Arial, sans-serif" font-size="18" fill="#516067">Name</text>
+  <rect x="96" y="576" width="528" height="54" rx="10" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="120" y="611" font-family="Arial, sans-serif" font-size="21" fill="#1f2a2e">Deep Focus Board</text>
+
+  <text x="96" y="678" font-family="Arial, sans-serif" font-size="18" fill="#516067">Accent</text>
+  <rect x="96" y="690" width="84" height="54" rx="10" fill="#0d7c8f"/>
+  <rect x="194" y="690" width="84" height="54" rx="10" fill="#2460c8"/>
+  <rect x="292" y="690" width="84" height="54" rx="10" fill="#18a16f"/>
+  <rect x="390" y="690" width="84" height="54" rx="10" fill="#c57015"/>
+  <rect x="488" y="690" width="84" height="54" rx="10" fill="#8c4fd6"/>
+
+  <text x="96" y="794" font-family="Arial, sans-serif" font-size="18" fill="#516067">Emoji</text>
+  <rect x="96" y="806" width="320" height="52" rx="10" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="120" y="840" font-family="Arial, sans-serif" font-size="26">🧪</text>
+  <rect x="430" y="806" width="194" height="52" rx="10" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="460" y="840" font-family="Arial, sans-serif" font-size="19" fill="#1f2a2e">Open Picker</text>
+
+  <rect x="96" y="878" width="528" height="118" rx="10" fill="#f4efe4" stroke="#d7ddd9"/>
+  <text x="120" y="912" font-family="Arial, sans-serif" font-size="17" fill="#516067">😀 😎 🤖 🚀 🎯 🧠 🧪 🌱 🍅 ☕</text>
+  <text x="120" y="944" font-family="Arial, sans-serif" font-size="17" fill="#516067">🛠️ 🔔 ✨ 🎧 🧘 📚 🔥 🌊 🍀 🌈</text>
+  <text x="120" y="976" font-family="Arial, sans-serif" font-size="17" fill="#516067">(scrollable emoji picker list)</text>
+
+  <text x="96" y="1038" font-family="Arial, sans-serif" font-size="18" fill="#516067">Alert sound</text>
+  <rect x="96" y="1050" width="350" height="56" rx="10" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="122" y="1086" font-family="Arial, sans-serif" font-size="21" fill="#1f2a2e">Bell</text>
+  <rect x="462" y="1050" width="162" height="56" rx="10" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="508" y="1086" font-family="Arial, sans-serif" font-size="21" fill="#1f2a2e">Preview</text>
+</svg>

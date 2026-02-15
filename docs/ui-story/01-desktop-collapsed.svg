@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1360" height="860" viewBox="0 0 1360 860" role="img" aria-labelledby="title desc">
+  <title id="title">UI Story 01 - Desktop collapsed</title>
+  <desc id="desc">Desktop timer-first surface with settings grouped with primary controls.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f7f6f0"/>
+      <stop offset="100%" stop-color="#e8efe8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1360" height="860" fill="url(#bg)"/>
+  <text x="60" y="64" font-family="Arial, sans-serif" font-size="28" fill="#1f2a2e" font-weight="700">Story 01 - Desktop (collapsed)</text>
+
+  <rect x="48" y="124" width="1264" height="108" rx="16" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="92" y="174" font-family="Arial, sans-serif" font-size="30" fill="#1f2a2e" font-weight="700">Pomo Relay</text>
+  <text x="92" y="204" font-family="Arial, sans-serif" font-size="18" fill="#516067">🚀 Deep Focus Board</text>
+
+  <rect x="1110" y="154" width="84" height="48" rx="10" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="1133" y="186" font-family="Arial, sans-serif" font-size="22" fill="#1f2a2e">☼</text>
+
+  <rect x="1210" y="154" width="74" height="48" rx="10" fill="#0d7c8f"/>
+  <text x="1222" y="186" font-family="Arial, sans-serif" font-size="19" fill="#ffffff" font-weight="700">Leave</text>
+
+  <rect x="48" y="252" width="1264" height="552" rx="16" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="96" y="318" font-family="Arial, sans-serif" font-size="28" fill="#1f2a2e" font-weight="700">Work (Running)</text>
+  <text x="96" y="360" font-family="Arial, sans-serif" font-size="19" fill="#516067">Cycle 1 of 4</text>
+  <text x="96" y="498" font-family="Arial, sans-serif" font-size="128" fill="#1f2a2e" font-weight="700">24:13</text>
+
+  <rect x="96" y="544" width="760" height="18" rx="9" fill="#b4dfe6"/>
+  <rect x="96" y="544" width="412" height="18" rx="9" fill="#0d7c8f"/>
+
+  <rect x="96" y="596" width="124" height="50" rx="10" fill="#0d7c8f"/>
+  <text x="132" y="628" font-family="Arial, sans-serif" font-size="21" fill="#ffffff" font-weight="700">Pause</text>
+
+  <rect x="236" y="596" width="124" height="50" rx="10" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="274" y="628" font-family="Arial, sans-serif" font-size="21" fill="#1f2a2e" font-weight="700">Reset</text>
+
+  <rect x="378" y="596" width="156" height="50" rx="10" fill="#ffffff" stroke="#d7ddd9"/>
+  <text x="400" y="628" font-family="Arial, sans-serif" font-size="21" fill="#1f2a2e" font-weight="700">Set 23:30</text>
+
+  <rect x="550" y="596" width="156" height="50" rx="10" fill="#ffffff" stroke="#0d7c8f" stroke-width="2"/>
+  <text x="584" y="628" font-family="Arial, sans-serif" font-size="21" fill="#0d7c8f" font-weight="700">Settings</text>
+
+  <rect x="96" y="678" width="760" height="90" rx="12" fill="#f4efe4" stroke="#d7ddd9"/>
+  <text x="122" y="715" font-family="Arial, sans-serif" font-size="19" fill="#1f2a2e" font-weight="700">Alert: Bell</text>
+  <text x="122" y="744" font-family="Arial, sans-serif" font-size="17" fill="#516067">Theme, sound, durations</text>
+</svg>

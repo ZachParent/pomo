@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import {
+    p2pState,
     requestPauseTimer,
     requestResetTimer,
     requestSetCycleInfo,
     requestSetDurations,
+    requestSetRoomTheme,
     requestSetTimeLeft,
     requestStartTimer,
   } from "./p2pStore";
@@ -16,12 +18,20 @@
   import { evaluateAlertTransition } from "./alertFeedback";
   import { timerState, toTimerDisplayState, type TimerPhase } from "./timerStore";
   import { withBasePath } from "./basePath";
+  import type { RoomThemeMetadata } from "./roomTheme";
 
   type AlertSound = "chime" | "bell" | "marimba" | "pulse";
 
   interface AlertSoundOption {
     value: AlertSound;
     label: string;
+  }
+
+  interface EmojiPickerClickDetail {
+    unicode?: string;
+    emoji?: {
+      unicode?: string;
+    };
   }
 
   const ALERT_SOUND_STORAGE_KEY = "pomo.alertSound";
@@ -44,6 +54,11 @@
   let pendingVisibilityAlert = false;
   let lastSyncedRevision = -1;
 
+  let settingsOpen = false;
+  let settingsHelpOpen = false;
+  let emojiPickerOpen = false;
+  let emojiPickerReady = false;
+
   let remainingMinutes = 0;
   let remainingSeconds = 0;
   let workMinutes = 25;
@@ -51,6 +66,10 @@
   let longBreakMinutes = 15;
   let cycleCount = 0;
   let longBreakInterval = 4;
+
+  let displayNameInput = "Focus Room";
+  let accentColorInput = "#0d7c8f";
+  let lastThemeRevision = -1;
 
   let selectedAlertSound: AlertSound = "chime";
   let alertSoundReady = false;
@@ -71,6 +90,16 @@
     scheduleSafetyMessage = "";
     lastSyncedRevision = view.revision;
   }
+
+  $: if ($p2pState.roomThemeRevision !== lastThemeRevision) {
+    displayNameInput = $p2pState.roomTheme.displayName;
+    accentColorInput = $p2pState.roomTheme.accentColor;
+    lastThemeRevision = $p2pState.roomThemeRevision;
+  }
+
+  $: selectedAlertSoundLabel =
+    ALERT_SOUND_OPTIONS.find((option) => option.value === selectedAlertSound)?.label ??
+    "Chime (classic)";
 
   const clearFlashTimeout = (): void => {
     if (flashTimeoutId !== null) {
@@ -227,6 +256,77 @@
     window.localStorage.setItem(ALERT_SOUND_STORAGE_KEY, value);
   };
 
+  const ensureEmojiPickerLoaded = async (): Promise<void> => {
+    if (emojiPickerReady) {
+      return;
+    }
+
+    await import("emoji-picker-element");
+    emojiPickerReady = true;
+  };
+
+  const openSettings = async (): Promise<void> => {
+    settingsOpen = true;
+    settingsHelpOpen = false;
+    await ensureEmojiPickerLoaded();
+  };
+
+  const closeSettings = (): void => {
+    settingsOpen = false;
+    settingsHelpOpen = false;
+    emojiPickerOpen = false;
+  };
+
+  const toggleSettingsHelp = (): void => {
+    settingsHelpOpen = !settingsHelpOpen;
+  };
+
+  const handleBackdropClick = (event: MouseEvent): void => {
+    if (event.target === event.currentTarget) {
+      closeSettings();
+    }
+  };
+
+  const handleWindowKeydown = (event: KeyboardEvent): void => {
+    if (event.key === "Escape" && settingsOpen) {
+      closeSettings();
+    }
+  };
+
+  const applyRoomThemePatch = (patch: Partial<RoomThemeMetadata>): void => {
+    requestSetRoomTheme(patch);
+  };
+
+  const handleDisplayNameInput = (event: Event): void => {
+    const target = event.currentTarget as HTMLInputElement;
+    displayNameInput = target.value;
+    applyRoomThemePatch({ displayName: target.value });
+  };
+
+  const handleAccentInput = (event: Event): void => {
+    const target = event.currentTarget as HTMLInputElement;
+    accentColorInput = target.value;
+    applyRoomThemePatch({ accentColor: target.value });
+  };
+
+  const toggleEmojiPicker = async (): Promise<void> => {
+    if (!emojiPickerOpen) {
+      await ensureEmojiPickerLoaded();
+    }
+    emojiPickerOpen = !emojiPickerOpen;
+  };
+
+  const handleEmojiClick = (event: Event): void => {
+    const detail = (event as CustomEvent<EmojiPickerClickDetail>).detail;
+    const unicode = detail?.unicode ?? detail?.emoji?.unicode;
+    if (!unicode) {
+      return;
+    }
+
+    applyRoomThemePatch({ emoji: unicode });
+    emojiPickerOpen = false;
+  };
+
   $: if (alertSoundReady) {
     persistAlertSound(selectedAlertSound);
   }
@@ -306,10 +406,12 @@
 
     document.addEventListener("visibilitychange", flushPendingAlert);
     window.addEventListener("focus", flushPendingAlert);
+    window.addEventListener("keydown", handleWindowKeydown);
 
     return () => {
       document.removeEventListener("visibilitychange", flushPendingAlert);
       window.removeEventListener("focus", flushPendingAlert);
+      window.removeEventListener("keydown", handleWindowKeydown);
     };
   });
 
@@ -361,7 +463,7 @@
     ></div>
   </div>
 
-  <div class="controls">
+  <div class="controls" data-testid="timer-primary-controls">
     {#if view.isRunning}
       <button data-testid="control-pause" type="button" on:click={requestPauseTimer}>
         Pause
@@ -379,115 +481,215 @@
     <button data-testid="control-reset" type="button" on:click={requestResetTimer}>
       Reset
     </button>
-  </div>
-
-  <div class="sound-row">
-    <label for="alert-sound-select">Alert sound</label>
-    <select
-      id="alert-sound-select"
-      data-testid="alert-sound-select"
-      bind:value={selectedAlertSound}
-    >
-      {#each ALERT_SOUND_OPTIONS as option}
-        <option value={option.value}>{option.label}</option>
-      {/each}
-    </select>
-    <button
-      type="button"
-      data-testid="preview-alert-sound"
-      on:click={previewAlertSound}
-    >
-      Preview
+    <button data-testid="open-settings" type="button" on:click={openSettings}>
+      Settings
     </button>
   </div>
 
-  <div class="editor-grid">
-    <section class="editor remaining-editor" data-testid="remaining-editor">
-      <h3>Adjust Remaining Time</h3>
-      <form
-        class="remaining-inline-form"
-        data-testid="remaining-editor-panel"
-        on:submit|preventDefault={setRemaining}
-      >
-        <label class="sr-only" for="remaining-minutes">Minutes</label>
-        <input
-          id="remaining-minutes"
-          data-testid="remaining-minutes"
-          bind:value={remainingMinutes}
-          type="number"
-          min="0"
-          inputmode="numeric"
-        />
-        <span aria-hidden="true">:</span>
-        <label class="sr-only" for="remaining-seconds">Seconds</label>
-        <input
-          id="remaining-seconds"
-          data-testid="remaining-seconds"
-          bind:value={remainingSeconds}
-          type="number"
-          min="0"
-          max="59"
-          inputmode="numeric"
-        />
-        <button data-testid="apply-remaining" type="submit">Apply</button>
-      </form>
-    </section>
+  <p class="settings-summary" data-testid="settings-summary">
+    Alert: {selectedAlertSoundLabel}
+  </p>
+</section>
 
-    <form class="editor" on:submit|preventDefault={setDurationsWithSafety}>
-      <h3>Duration Settings</h3>
-      <p class="editor-note">
-        Changes apply to future phases. If a running phase would be shortened, apply
-        again to confirm.
-      </p>
-      <div class="row">
-        <label for="work-minutes">Work minutes</label>
-        <input id="work-minutes" bind:value={workMinutes} type="number" min="1" />
+{#if settingsOpen}
+  <div
+    class="settings-backdrop"
+    data-testid="settings-backdrop"
+    role="presentation"
+    on:click={handleBackdropClick}
+  >
+    <div
+      class="settings-modal"
+      data-testid="settings-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+    >
+      <div class="settings-sheet-handle" aria-hidden="true"></div>
+
+      <div class="settings-header">
+        <h3 id="settings-title">Room Settings</h3>
+        <div class="settings-header-actions">
+          <button
+            type="button"
+            class="settings-icon-button"
+            data-testid="settings-help"
+            aria-expanded={settingsHelpOpen}
+            aria-label="Toggle settings help"
+            on:click={toggleSettingsHelp}
+          >
+            ?
+          </button>
+          <button
+            type="button"
+            class="settings-icon-button"
+            data-testid="close-settings"
+            aria-label="Close settings"
+            on:click={closeSettings}
+          >
+            ×
+          </button>
+        </div>
       </div>
-      <div class="row">
-        <label for="short-break-minutes">Short break minutes</label>
-        <input
-          id="short-break-minutes"
-          bind:value={shortBreakMinutes}
-          type="number"
-          min="1"
-        />
-      </div>
-      <div class="row">
-        <label for="long-break-minutes">Long break minutes</label>
-        <input
-          id="long-break-minutes"
-          bind:value={longBreakMinutes}
-          type="number"
-          min="1"
-        />
-      </div>
-      {#if scheduleSafetyMessage}
-        <p class="schedule-warning" data-testid="schedule-warning">
-          {scheduleSafetyMessage}
+
+      {#if settingsHelpOpen}
+        <p class="settings-help" data-testid="settings-help-tooltip">
+          Theme updates and timer settings sync immediately.
         </p>
       {/if}
-      <button data-testid="apply-durations" type="submit">Apply Durations</button>
-    </form>
 
-    <form class="editor" on:submit|preventDefault={setCycleSettings}>
-      <h3>Cycle Settings</h3>
-      <p class="editor-note">
-        Cycle values update progression only and do not adjust current phase duration.
-      </p>
-      <div class="row">
-        <label for="cycle-count">Current cycle</label>
-        <input id="cycle-count" bind:value={cycleCount} type="number" min="0" />
+      <div class="settings-content">
+        <section class="settings-card" data-testid="theme-settings-section">
+          <h4>Theme</h4>
+          <label>
+            Name
+            <input
+              data-testid="room-display-name-input"
+              value={displayNameInput}
+              maxlength="48"
+              autocomplete="off"
+              on:input={handleDisplayNameInput}
+            />
+          </label>
+
+          <div class="theme-inline">
+            <label>
+              Accent
+              <input
+                data-testid="room-accent-input"
+                value={accentColorInput}
+                type="color"
+                on:input={handleAccentInput}
+              />
+            </label>
+            <div class="emoji-field">
+              <span>Emoji</span>
+              <button
+                type="button"
+                class="emoji-trigger"
+                data-testid="emoji-trigger"
+                aria-label="Pick room emoji"
+                aria-expanded={emojiPickerOpen}
+                on:click={toggleEmojiPicker}
+              >
+                {$p2pState.roomTheme.emoji}
+              </button>
+            </div>
+          </div>
+
+          {#if emojiPickerOpen}
+            <div class="emoji-picker-wrap" data-testid="emoji-picker-panel">
+              {#if emojiPickerReady}
+                <emoji-picker on:emoji-click={handleEmojiClick}></emoji-picker>
+              {/if}
+            </div>
+          {/if}
+        </section>
+
+        <section class="settings-card" data-testid="timer-settings-section">
+          <h4>Timer</h4>
+
+          <form
+            class="remaining-inline-form"
+            data-testid="remaining-editor-panel"
+            on:submit|preventDefault={setRemaining}
+          >
+            <label class="sr-only" for="remaining-minutes">Minutes</label>
+            <input
+              id="remaining-minutes"
+              data-testid="remaining-minutes"
+              bind:value={remainingMinutes}
+              type="number"
+              min="0"
+              inputmode="numeric"
+            />
+            <span aria-hidden="true">:</span>
+            <label class="sr-only" for="remaining-seconds">Seconds</label>
+            <input
+              id="remaining-seconds"
+              data-testid="remaining-seconds"
+              bind:value={remainingSeconds}
+              type="number"
+              min="0"
+              max="59"
+              inputmode="numeric"
+            />
+            <button data-testid="apply-remaining" type="submit">Apply</button>
+          </form>
+
+          <form class="editor" on:submit|preventDefault={setDurationsWithSafety}>
+            <div class="row">
+              <label for="work-minutes">Work minutes</label>
+              <input id="work-minutes" bind:value={workMinutes} type="number" min="1" />
+            </div>
+            <div class="row">
+              <label for="short-break-minutes">Short break minutes</label>
+              <input
+                id="short-break-minutes"
+                bind:value={shortBreakMinutes}
+                type="number"
+                min="1"
+              />
+            </div>
+            <div class="row">
+              <label for="long-break-minutes">Long break minutes</label>
+              <input
+                id="long-break-minutes"
+                bind:value={longBreakMinutes}
+                type="number"
+                min="1"
+              />
+            </div>
+            {#if scheduleSafetyMessage}
+              <p class="schedule-warning" data-testid="schedule-warning">
+                {scheduleSafetyMessage}
+              </p>
+            {/if}
+            <button data-testid="apply-durations" type="submit">Apply Durations</button>
+          </form>
+
+          <form class="editor" on:submit|preventDefault={setCycleSettings}>
+            <div class="row">
+              <label for="cycle-count">Current cycle</label>
+              <input id="cycle-count" bind:value={cycleCount} type="number" min="0" />
+            </div>
+            <div class="row">
+              <label for="long-break-interval">Long break interval</label>
+              <input
+                id="long-break-interval"
+                bind:value={longBreakInterval}
+                type="number"
+                min="1"
+              />
+            </div>
+            <button data-testid="apply-cycle-settings" type="submit">Apply Cycle</button
+            >
+          </form>
+        </section>
+
+        <section class="settings-card" data-testid="sound-settings-section">
+          <h4>Sound</h4>
+          <div class="sound-row">
+            <label for="alert-sound-select">Alert sound</label>
+            <select
+              id="alert-sound-select"
+              data-testid="alert-sound-select"
+              bind:value={selectedAlertSound}
+            >
+              {#each ALERT_SOUND_OPTIONS as option}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+            <button
+              type="button"
+              data-testid="preview-alert-sound"
+              on:click={previewAlertSound}
+            >
+              Preview
+            </button>
+          </div>
+        </section>
       </div>
-      <div class="row">
-        <label for="long-break-interval">Long break interval</label>
-        <input
-          id="long-break-interval"
-          bind:value={longBreakInterval}
-          type="number"
-          min="1"
-        />
-      </div>
-      <button data-testid="apply-cycle-settings" type="submit">Apply Cycle</button>
-    </form>
+    </div>
   </div>
-</section>
+{/if}
