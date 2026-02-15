@@ -13,10 +13,11 @@ Room sessions now include synchronized room theme metadata (`displayName`, `emoj
 
 1. UI
 
-- `src/App.svelte`: shell, routing, theme toggle.
+- `src/App.svelte`: shell, pathname-based view selection, compact layout structure, icon-based theme toggle.
 - `src/lib/Home.svelte`: room entry and route handoff.
 - `src/lib/PomodoroSession.svelte`: connection lifecycle, host/join fallback actions, room theme form, session-level theme styling.
 - `src/lib/PomodoroTimer.svelte`: timer rendering, controls, schedule editing safety messaging, alerts.
+- `src/lib/navigation.ts`: lightweight programmatic navigation helper that pushes/replaces history and emits `popstate` to keep app view state synchronized.
 
 2. Timer Core
 
@@ -79,6 +80,7 @@ Host synchronization uses elapsed-time integration, not naive decrement loops. T
 ## Reliability Decisions
 
 - Runtime token guard prevents stale event handlers from mutating new sessions.
+- App-level pathname parsing avoids root-route activation stalls and keeps home/session rendering deterministic under the `/pomo/` base path.
 - Connecting-state host fallback actions are available when `canBecomeHost` is true, without waiting for timeout expiration.
 - Host heartbeat reconciles delayed timers and rebroadcasts canonical state.
 - UI projects timer display from state+clock to avoid visual freezes.

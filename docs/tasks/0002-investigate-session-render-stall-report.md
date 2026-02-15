@@ -1,6 +1,6 @@
 # 0002 - Investigate Session Render Stall Reports
 
-- Status: `ready`
+- Status: `done`
 - Priority: `P1`
 - Type: `bug`
 - Owner: `unassigned`
@@ -36,11 +36,14 @@ A user-reported issue indicates the session UI does not appear until toggling li
 
 ## Acceptance Criteria
 
-- [ ] A reliable repro path is documented in this ticket.
-- [ ] Root cause is documented (state, render, or transport timing issue).
-- [ ] Fix is merged with regression test coverage.
-- [ ] No regressions in `just verify`.
+- [x] A reliable repro path is documented in this ticket.
+- [x] Root cause is documented (state, render, or transport timing issue).
+- [x] Fix is merged with regression test coverage.
+- [x] No regressions in `just verify`.
 
 ## Notes
 
-- If no repro can be found, include evidence and close with a falsifiable follow-up hypothesis.
+- Repro path: loading `/pomo/` could leave the main app view blank until an unrelated state update (like toggling theme) forced a rerender.
+- Root cause: base-path route activation for the root view was not consistently resolving on initial render/navigation transitions.
+- Fix: app-level pathname view resolution in `src/App.svelte` plus a dedicated navigation helper (`src/lib/navigation.ts`) used by `Home.svelte` and `PomodoroSession.svelte`.
+- Regression coverage: `tests/e2e/session.spec.ts` now includes a first-load home-route visibility assertion and a leave-to-home assertion.

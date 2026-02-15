@@ -54,6 +54,12 @@ const joinHostedRoom = async (page: Page, roomName: string): Promise<void> => {
 
 test.describe.configure({ mode: "serial" });
 
+test("home route renders room input immediately on first load", async ({ page }) => {
+  await page.goto(`${APP_BASE_PATH}/`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("room-name-input")).toBeVisible();
+  await expect(page.getByTestId("join-room-button")).toBeVisible();
+});
+
 test("shows host fallback controls while connecting to an empty room", async ({
   page,
 }) => {
@@ -264,6 +270,7 @@ test("leave session updates route to the app root", async ({ page }) => {
 
   await page.getByRole("button", { name: "Leave" }).click();
   await expect(page).toHaveURL(/\/pomo\/$/);
+  await expect(page.getByTestId("room-name-input")).toBeVisible();
 });
 
 test("theme toggle updates and persists app theme selection", async ({ page }) => {

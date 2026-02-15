@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { navigate } from "svelte-routing";
   import PomodoroTimer from "./PomodoroTimer.svelte";
   import {
     connectToHost,
@@ -17,6 +16,7 @@
   } from "./roomTheme";
   import { theme } from "./themeStore";
   import { normalizeBasePath, withBasePath } from "./basePath";
+  import { navigate } from "./navigation";
 
   export let roomName: string;
 

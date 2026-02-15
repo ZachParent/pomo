@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { navigate } from "svelte-routing";
   import { normalizeBasePath, withBasePath } from "./basePath";
+  import { navigate } from "./navigation";
 
   const basePath = normalizeBasePath(import.meta.env.BASE_URL);
 

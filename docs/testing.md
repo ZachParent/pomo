@@ -49,6 +49,7 @@ just test-unit
 - Location: `tests/e2e/**/*.spec.ts`
 - Transport mode: `broadcast` (deterministic local sync)
 - Coverage:
+  - home route renders room controls immediately on first load (no theme-toggle workaround required)
   - connecting-state host fallback controls
   - host lifecycle (start/pause/reset/leave)
   - no-stall transition from work to break

@@ -3,17 +3,16 @@
 ## Recently Completed (2026-02-15)
 
 - Ticket `0001`: removed brandmark artifact line by simplifying `public/brandmark.svg`.
+- Ticket `0002`: fixed base-path session/home render stalls and added first-load home-route regression coverage.
 - Ticket `0003`: split duration/cycle controls and added active-phase shortening confirmation guard.
 - Ticket `0005`: surfaced host fallback actions in connecting state when safe.
 - Ticket `0006`: shipped room display name/emoji/accent customization with synchronized room theme revisions.
 - Ticket `0007`: expanded e2e regression coverage for schedule safety, connecting fallback controls, and room theme sync.
 - Ticket `0008`: migrated e2e suite to Playwright, expanded multi-flow session coverage, and enforced stricter unit coverage thresholds.
+- Ticket `0009`: tightened UI density for desktop/mobile and replaced textual sun/moon theme labels with icons.
 
 ## Near-Term Reliability
 
-- Session render reliability (`0002`):
-  - Reproduce and fix reported first-load render stalls in session view.
-  - Add regression checks so theme toggles never gate UI visibility.
 - Host handoff protocol:
   - Elect a backup host when current host disconnects.
   - Resume timer from latest consensus state.
