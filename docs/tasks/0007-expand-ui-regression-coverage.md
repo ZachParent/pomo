@@ -1,6 +1,6 @@
 # 0007 - Expand Visual And Interaction Regression Coverage
 
-- Status: `ready`
+- Status: `done`
 - Priority: `P2`
 - Type: `chore`
 - Owner: `unassigned`
@@ -23,6 +23,7 @@ Current tests cover core timer behavior but do not systematically guard against 
 - Add e2e checks for schedule-change warnings/confirmation behavior.
 - Add screenshot checkpoints for light/dark theme parity.
 - Add bug-specific regression coverage tied to tickets `0001`-`0005`.
+- Add utility-level regression coverage where fast deterministic tests reduce e2e burden.
 
 ### Out of scope
 
@@ -32,14 +33,18 @@ Current tests cover core timer behavior but do not systematically guard against 
 
 - `tests/e2e/session.e2e.test.ts`
 - `scripts/explore-ui.mjs`
+- `src/lib/scheduleSafety.test.ts`
+- `src/lib/roomTheme.test.ts`
 - `docs/testing.md`
 
 ## Acceptance Criteria
 
-- [ ] New tests fail before corresponding bug fixes and pass afterward.
-- [ ] Coverage includes both interaction assertions and screenshot artifacts.
-- [ ] `just test-e2e` remains stable and deterministic in `broadcast` mode.
+- [x] Utility-level regression tests cover schedule safety and room theme token/sanitization behavior.
+- [x] New e2e tests fail before corresponding bug fixes and pass afterward.
+- [x] Coverage includes both interaction assertions and screenshot artifacts.
+- [x] `just test-e2e` remains stable and deterministic in `broadcast` mode.
 
 ## Notes
 
-- Keep runtime bounded; split heavy tests into focused cases.
+- Added e2e assertions for schedule warning confirmation, connecting-state host fallback, and room theme synchronization in `tests/e2e/session.e2e.test.ts`.
+- Existing e2e screenshot artifacts are still captured for regression visibility in `artifacts/screenshots/e2e`.

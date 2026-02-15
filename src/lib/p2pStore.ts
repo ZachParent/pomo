@@ -3,6 +3,12 @@ import Peer from "peerjs";
 import type { DataConnection } from "peerjs";
 import type { TimerDurations, TimerState } from "./timerEngine";
 import {
+  createRoomTheme,
+  mergeRoomTheme,
+  roomThemeEquals,
+  type RoomThemeMetadata,
+} from "./roomTheme";
+import {
   getTimerSnapshot,
   pauseTimer,
   resetTimer,
@@ -21,6 +27,7 @@ export type TransportMode = "peerjs" | "broadcast";
 interface ConnectOptions {
   mode?: TransportMode;
   timeoutMs?: number;
+  roomTheme?: Partial<RoomThemeMetadata>;
 }
 
 interface P2PState {
@@ -33,6 +40,8 @@ interface P2PState {
   isHost: boolean;
   canBecomeHost: boolean;
   error: string | null;
+  roomTheme: RoomThemeMetadata;
+  roomThemeRevision: number;
   connections: Record<string, DataConnection>;
 }
 
@@ -46,6 +55,8 @@ const initialState: P2PState = {
   isHost: false,
   canBecomeHost: false,
   error: null,
+  roomTheme: createRoomTheme("Focus Room"),
+  roomThemeRevision: 0,
   connections: {},
 };
 
@@ -71,17 +82,39 @@ type TimerActionMessage =
       payload: Partial<TimerDurations>;
     };
 
+type RoomThemeActionMessage = {
+  type: "REQUEST_SET_ROOM_THEME";
+  senderId: string;
+  payload: Partial<RoomThemeMetadata>;
+};
+
 type TimerStateMessage = {
   type: "STATE_UPDATE";
   senderId: string;
   payload: TimerState;
 };
 
+type RoomThemeUpdateMessage = {
+  type: "ROOM_THEME_UPDATE";
+  senderId: string;
+  payload: {
+    theme: RoomThemeMetadata;
+    revision: number;
+  };
+};
+
 type SessionDiscoveryMessage =
   | { type: "REQUEST_STATE"; senderId: string }
   | { type: "HOST_PONG"; senderId: string; hostId: string };
 
-type SessionMessage = TimerActionMessage | TimerStateMessage | SessionDiscoveryMessage;
+type SessionMessage =
+  | TimerActionMessage
+  | RoomThemeActionMessage
+  | TimerStateMessage
+  | RoomThemeUpdateMessage
+  | SessionDiscoveryMessage;
+
+type SessionActionMessage = TimerActionMessage | RoomThemeActionMessage;
 
 const HOST_HEARTBEAT_MS = 250;
 const DEFAULT_CONNECT_TIMEOUT_MS = 8_000;
@@ -228,6 +261,26 @@ const sendStateToPeerConnection = (connection: DataConnection): void => {
   } satisfies TimerStateMessage);
 };
 
+const sendRoomThemeToPeerConnection = (connection: DataConnection): void => {
+  if (!connection.open) {
+    return;
+  }
+
+  const state = get(p2pState);
+  if (!state.myId || !state.isHost) {
+    return;
+  }
+
+  connection.send({
+    type: "ROOM_THEME_UPDATE",
+    senderId: state.myId,
+    payload: {
+      theme: state.roomTheme,
+      revision: state.roomThemeRevision,
+    },
+  } satisfies RoomThemeUpdateMessage);
+};
+
 const broadcastTimerState = (state: TimerState, token: number = runtimeToken): void => {
   if (token !== runtimeToken) {
     return;
@@ -254,6 +307,46 @@ const broadcastTimerState = (state: TimerState, token: number = runtimeToken): v
   }
 
   localChannel?.postMessage(message);
+};
+
+const broadcastRoomTheme = (
+  theme: RoomThemeMetadata,
+  revision: number,
+  token: number = runtimeToken
+): void => {
+  if (token !== runtimeToken) {
+    return;
+  }
+
+  const session = get(p2pState);
+  if (!session.isHost || !session.isConnected || !session.myId) {
+    return;
+  }
+
+  const message: RoomThemeUpdateMessage = {
+    type: "ROOM_THEME_UPDATE",
+    senderId: session.myId,
+    payload: {
+      theme,
+      revision,
+    },
+  };
+
+  if (session.mode === "peerjs") {
+    Object.values(hostConnections).forEach((connection) => {
+      if (connection.open) {
+        connection.send(message);
+      }
+    });
+    return;
+  }
+
+  localChannel?.postMessage(message);
+};
+
+const broadcastCurrentRoomTheme = (token: number): void => {
+  const session = get(p2pState);
+  broadcastRoomTheme(session.roomTheme, session.roomThemeRevision, token);
 };
 
 const sendHostPong = (hostId: string): void => {
@@ -305,6 +398,60 @@ const applyHostAction = (action: TimerActionMessage, token: number): void => {
   broadcastTimerState(nextSnapshot, token);
 };
 
+const applyHostRoomThemePatch = (
+  patch: Partial<RoomThemeMetadata>,
+  token: number
+): void => {
+  if (token !== runtimeToken) {
+    return;
+  }
+
+  let nextTheme: RoomThemeMetadata | null = null;
+  let nextRevision = 0;
+
+  p2pState.update((state) => {
+    const merged = mergeRoomTheme(state.roomTheme, patch);
+    if (roomThemeEquals(state.roomTheme, merged)) {
+      return state;
+    }
+
+    nextRevision = state.roomThemeRevision + 1;
+    nextTheme = merged;
+
+    return {
+      ...state,
+      roomTheme: merged,
+      roomThemeRevision: nextRevision,
+    };
+  });
+
+  if (nextTheme) {
+    broadcastRoomTheme(nextTheme, nextRevision, token);
+  }
+};
+
+const applyRemoteRoomTheme = (theme: RoomThemeMetadata, revision: number): void => {
+  p2pState.update((state) => {
+    if (revision < state.roomThemeRevision) {
+      return state;
+    }
+
+    const sanitized = createRoomTheme(state.roomTheme.displayName, theme);
+    if (
+      revision === state.roomThemeRevision &&
+      roomThemeEquals(state.roomTheme, sanitized)
+    ) {
+      return state;
+    }
+
+    return {
+      ...state,
+      roomTheme: sanitized,
+      roomThemeRevision: revision,
+    };
+  });
+};
+
 const handleClientSessionMessage = (message: SessionMessage, token: number): void => {
   if (token !== runtimeToken) {
     return;
@@ -315,7 +462,11 @@ const handleClientSessionMessage = (message: SessionMessage, token: number): voi
     return;
   }
 
-  if (message.senderId === session.myId && message.type !== "STATE_UPDATE") {
+  if (
+    message.senderId === session.myId &&
+    message.type !== "STATE_UPDATE" &&
+    message.type !== "ROOM_THEME_UPDATE"
+  ) {
     return;
   }
 
@@ -330,6 +481,11 @@ const handleClientSessionMessage = (message: SessionMessage, token: number): voi
       error: null,
       canBecomeHost: false,
     }));
+    return;
+  }
+
+  if (message.type === "ROOM_THEME_UPDATE") {
+    applyRemoteRoomTheme(message.payload.theme, message.payload.revision);
     return;
   }
 
@@ -358,6 +514,12 @@ const handleHostSessionMessage = (
   if (message.type === "REQUEST_STATE") {
     sendHostPong(roomId);
     broadcastTimerState(getTimerSnapshot(), token);
+    broadcastCurrentRoomTheme(token);
+    return;
+  }
+
+  if (message.type === "REQUEST_SET_ROOM_THEME") {
+    applyHostRoomThemePatch(message.payload, token);
     return;
   }
 
@@ -479,6 +641,7 @@ const attachHostPeerConnection = (
 
     registerHostConnection(connection);
     sendStateToPeerConnection(connection);
+    sendRoomThemeToPeerConnection(connection);
   });
 
   connection.on("data", (data) => {
@@ -606,6 +769,7 @@ const startBroadcastHost = (token: number, roomId: string): void => {
 
   startHostHeartbeat(token);
   broadcastTimerState(getTimerSnapshot(), token);
+  broadcastCurrentRoomTheme(token);
 };
 
 const startPeerHost = (token: number, roomId: string): void => {
@@ -630,6 +794,7 @@ const startPeerHost = (token: number, roomId: string): void => {
 
     startHostHeartbeat(token);
     broadcastTimerState(getTimerSnapshot(), token);
+    broadcastCurrentRoomTheme(token);
   });
 
   peer.on("connection", (connection) => {
@@ -672,6 +837,9 @@ const startPeerHost = (token: number, roomId: string): void => {
 export const connectToHost = (roomId: string, options: ConnectOptions = {}): void => {
   const mode = options.mode ?? "peerjs";
   const timeoutMs = options.timeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
+  const roomTheme = createRoomTheme(options.roomTheme?.displayName ?? roomId, {
+    ...options.roomTheme,
+  });
   const token = beginRuntime();
   const clientId = makeClientId();
   resetTimerStore(Date.now());
@@ -682,6 +850,8 @@ export const connectToHost = (roomId: string, options: ConnectOptions = {}): voi
     roomId,
     myId: clientId,
     hostId: roomId,
+    roomTheme,
+    roomThemeRevision: 0,
     isConnecting: true,
     canBecomeHost: true,
   });
@@ -696,6 +866,9 @@ export const connectToHost = (roomId: string, options: ConnectOptions = {}): voi
 
 export const initializeHost = (roomId: string, options: ConnectOptions = {}): void => {
   const mode = options.mode ?? "peerjs";
+  const roomTheme = createRoomTheme(options.roomTheme?.displayName ?? roomId, {
+    ...options.roomTheme,
+  });
   const token = beginRuntime();
   resetTimerStore(Date.now());
 
@@ -705,6 +878,8 @@ export const initializeHost = (roomId: string, options: ConnectOptions = {}): vo
     roomId,
     myId: mode === "broadcast" ? roomId : null,
     hostId: roomId,
+    roomTheme,
+    roomThemeRevision: 0,
     isHost: true,
     isConnecting: true,
     canBecomeHost: false,
@@ -725,7 +900,7 @@ export const disconnectPeer = (): void => {
 };
 
 const sendActionRequest = (
-  buildMessage: (senderId: string) => TimerActionMessage
+  buildMessage: (senderId: string) => SessionActionMessage
 ): void => {
   const state = get(p2pState);
   if (!state.roomId) {
@@ -740,6 +915,11 @@ const sendActionRequest = (
   const message = buildMessage(senderId);
 
   if (state.isHost) {
+    if (message.type === "REQUEST_SET_ROOM_THEME") {
+      applyHostRoomThemePatch(message.payload, runtimeToken);
+      return;
+    }
+
     applyHostAction(message, runtimeToken);
     return;
   }
@@ -785,4 +965,11 @@ export const requestSetDurations = (durations: Partial<TimerDurations>): void =>
     type: "REQUEST_SET_DURATIONS",
     senderId,
     payload: durations,
+  }));
+
+export const requestSetRoomTheme = (patch: Partial<RoomThemeMetadata>): void =>
+  sendActionRequest((senderId) => ({
+    type: "REQUEST_SET_ROOM_THEME",
+    senderId,
+    payload: patch,
   }));

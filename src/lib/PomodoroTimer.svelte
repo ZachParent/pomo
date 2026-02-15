@@ -8,6 +8,11 @@
     requestSetTimeLeft,
     requestStartTimer,
   } from "./p2pStore";
+  import {
+    toDurationPayload,
+    willShortenActivePhase,
+    type DurationMinutesInput,
+  } from "./scheduleSafety";
   import { timerState, toTimerDisplayState } from "./timerStore";
   import { withBasePath } from "./basePath";
 
@@ -27,6 +32,10 @@
   let cycleCount = 0;
   let longBreakInterval = 4;
 
+  let remainingEditorPinned = false;
+  let scheduleSafetyMessage = "";
+  let pendingDurationConfirmKey: string | null = null;
+
   $: view = toTimerDisplayState($timerState, nowMs);
 
   $: if (view.revision !== lastSyncedRevision) {
@@ -37,6 +46,8 @@
     longBreakMinutes = Math.floor(view.longBreakDurationSeconds / 60);
     cycleCount = view.cycleCount;
     longBreakInterval = view.longBreakInterval;
+    pendingDurationConfirmKey = null;
+    scheduleSafetyMessage = "";
     lastSyncedRevision = view.revision;
   }
 
@@ -82,14 +93,43 @@
     requestSetTimeLeft(nextSeconds);
   };
 
-  const setSchedule = (): void => {
-    requestSetDurations({
-      workDurationSeconds: Math.max(1, Math.floor(workMinutes * 60)),
-      shortBreakDurationSeconds: Math.max(1, Math.floor(shortBreakMinutes * 60)),
-      longBreakDurationSeconds: Math.max(1, Math.floor(longBreakMinutes * 60)),
-      longBreakInterval: Math.max(1, Math.floor(longBreakInterval)),
-    });
-    requestSetCycleInfo(Math.max(0, Math.floor(cycleCount)), longBreakInterval);
+  const getDurationInput = (): DurationMinutesInput => ({
+    workMinutes,
+    shortBreakMinutes,
+    longBreakMinutes,
+  });
+
+  const getDurationConfirmKey = (): string =>
+    [workMinutes, shortBreakMinutes, longBreakMinutes]
+      .map((value) => Math.floor(value))
+      .join(":");
+
+  const setDurationsWithSafety = (): void => {
+    const durationInput = getDurationInput();
+    const shouldConfirm = willShortenActivePhase(view, durationInput);
+    const confirmKey = getDurationConfirmKey();
+
+    if (shouldConfirm && pendingDurationConfirmKey !== confirmKey) {
+      pendingDurationConfirmKey = confirmKey;
+      scheduleSafetyMessage =
+        "Applying these durations will shorten the active phase immediately. Submit again to confirm.";
+      return;
+    }
+
+    requestSetDurations(toDurationPayload(durationInput));
+    pendingDurationConfirmKey = null;
+    scheduleSafetyMessage = "";
+  };
+
+  const setCycleSettings = (): void => {
+    requestSetCycleInfo(
+      Math.max(0, Math.floor(cycleCount)),
+      Math.max(1, Math.floor(longBreakInterval))
+    );
+  };
+
+  const toggleRemainingEditor = (): void => {
+    remainingEditorPinned = !remainingEditorPinned;
   };
 
   onMount(() => {
@@ -166,20 +206,38 @@
   </div>
 
   <div class="editor-grid">
-    <form class="editor" on:submit|preventDefault={setRemaining}>
-      <h3>Adjust Remaining Time</h3>
-      <div class="row">
-        <label for="remaining-minutes">Minutes</label>
+    <section
+      class:remaining-editor-pinned={remainingEditorPinned}
+      class="editor remaining-editor"
+      data-testid="remaining-editor"
+    >
+      <div class="remaining-editor-header">
+        <h3>Adjust Remaining Time</h3>
+        <button
+          type="button"
+          data-testid="toggle-remaining-editor"
+          aria-expanded={remainingEditorPinned}
+          on:click={toggleRemainingEditor}
+        >
+          {remainingEditorPinned ? "Hide" : "Edit"}
+        </button>
+      </div>
+      <form
+        class="remaining-inline-form"
+        data-testid="remaining-editor-panel"
+        on:submit|preventDefault={setRemaining}
+      >
+        <label class="sr-only" for="remaining-minutes">Minutes</label>
         <input
           id="remaining-minutes"
           data-testid="remaining-minutes"
           bind:value={remainingMinutes}
           type="number"
           min="0"
+          inputmode="numeric"
         />
-      </div>
-      <div class="row">
-        <label for="remaining-seconds">Seconds</label>
+        <span aria-hidden="true">:</span>
+        <label class="sr-only" for="remaining-seconds">Seconds</label>
         <input
           id="remaining-seconds"
           data-testid="remaining-seconds"
@@ -187,13 +245,18 @@
           type="number"
           min="0"
           max="59"
+          inputmode="numeric"
         />
-      </div>
-      <button data-testid="apply-remaining" type="submit">Apply Remaining Time</button>
-    </form>
+        <button data-testid="apply-remaining" type="submit">Apply</button>
+      </form>
+    </section>
 
-    <form class="editor" on:submit|preventDefault={setSchedule}>
-      <h3>Schedule Settings</h3>
+    <form class="editor" on:submit|preventDefault={setDurationsWithSafety}>
+      <h3>Duration Settings</h3>
+      <p class="editor-note">
+        Changes apply to future phases. If a running phase would be shortened, apply
+        again to confirm.
+      </p>
       <div class="row">
         <label for="work-minutes">Work minutes</label>
         <input id="work-minutes" bind:value={workMinutes} type="number" min="1" />
@@ -216,6 +279,19 @@
           min="1"
         />
       </div>
+      {#if scheduleSafetyMessage}
+        <p class="schedule-warning" data-testid="schedule-warning">
+          {scheduleSafetyMessage}
+        </p>
+      {/if}
+      <button data-testid="apply-durations" type="submit">Apply Durations</button>
+    </form>
+
+    <form class="editor" on:submit|preventDefault={setCycleSettings}>
+      <h3>Cycle Settings</h3>
+      <p class="editor-note">
+        Cycle values update progression only and do not adjust current phase duration.
+      </p>
       <div class="row">
         <label for="cycle-count">Current cycle</label>
         <input id="cycle-count" bind:value={cycleCount} type="number" min="0" />
@@ -229,7 +305,7 @@
           min="1"
         />
       </div>
-      <button type="submit">Apply Schedule</button>
+      <button data-testid="apply-cycle-settings" type="submit">Apply Cycle</button>
     </form>
   </div>
 </section>

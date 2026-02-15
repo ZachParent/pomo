@@ -1,6 +1,6 @@
 # 0005 - Show Host Fallback Actions While Connecting
 
-- Status: `ready`
+- Status: `done`
 - Priority: `P2`
 - Type: `bug`
 - Owner: `unassigned`
@@ -35,10 +35,10 @@ On room join, users may wait several seconds before host fallback actions become
 
 ## Acceptance Criteria
 
-- [ ] Users can choose to host without waiting for timeout when no host is available.
-- [ ] Connecting/hosting state messaging remains clear.
-- [ ] No regressions in host/client synchronization tests.
+- [x] Users can choose to host without waiting for timeout when no host is available.
+- [x] Connecting/hosting state messaging remains clear.
+- [x] No regressions in host/client synchronization tests.
 
 ## Notes
 
-- Coordinate with ticket `0002` if both touch the same state transitions.
+- Connecting state now shows fallback controls immediately when `canBecomeHost` is true (`Start Hosting` / `Retry Join`) instead of waiting for timeout messaging alone.

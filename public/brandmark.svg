@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
   <title id="title">Pomo Relay Brand Mark</title>
-  <desc id="desc">A timer dial with a relay spark.</desc>
+  <desc id="desc">A timer dial with relay spark details.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#0d7c8f" />
@@ -11,17 +11,11 @@
       <stop offset="100%" stop-color="#ff9f53" />
     </linearGradient>
   </defs>
-  <rect width="256" height="256" rx="52" fill="url(#bg)" />
-  <circle cx="128" cy="128" r="84" fill="none" stroke="url(#ring)" stroke-width="20" />
-  <circle cx="128" cy="128" r="18" fill="#ffe39d" />
-  <path d="M128 128 L128 82" stroke="#ffe39d" stroke-width="14" stroke-linecap="round" />
-  <path d="M128 128 L166 146" stroke="#ffe39d" stroke-width="14" stroke-linecap="round" />
-  <path
-    d="M56 170 C78 138, 102 154, 118 132 C134 110, 156 118, 174 92 C184 78, 201 76, 214 84"
-    fill="none"
-    stroke="#ffffff"
-    stroke-opacity="0.8"
-    stroke-width="10"
-    stroke-linecap="round"
-  />
+  <rect width="256" height="256" rx="56" fill="url(#bg)" />
+  <circle cx="128" cy="128" r="82" fill="none" stroke="url(#ring)" stroke-width="18" />
+  <circle cx="128" cy="128" r="62" fill="#0b3b45" fill-opacity="0.28" />
+  <circle cx="128" cy="128" r="14" fill="#fff0c1" />
+  <path d="M128 128V84" stroke="#fff0c1" stroke-width="14" stroke-linecap="round" />
+  <path d="M128 128L170 149" stroke="#fff0c1" stroke-width="14" stroke-linecap="round" />
+  <circle cx="188" cy="82" r="9" fill="#fff9e8" fill-opacity="0.85" />
 </svg>

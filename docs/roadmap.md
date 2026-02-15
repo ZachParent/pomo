@@ -1,8 +1,16 @@
 # Roadmap
 
+## Recently Completed (2026-02-15)
+
+- Ticket `0001`: removed brandmark artifact line by simplifying `public/brandmark.svg`.
+- Ticket `0003`: split duration/cycle controls and added active-phase shortening confirmation guard.
+- Ticket `0005`: surfaced host fallback actions in connecting state when safe.
+- Ticket `0006`: shipped room display name/emoji/accent customization with synchronized room theme revisions.
+- Ticket `0007`: expanded e2e regression coverage for schedule safety, connecting fallback controls, and room theme sync.
+
 ## Near-Term Reliability
 
-- Session render reliability:
+- Session render reliability (`0002`):
   - Reproduce and fix reported first-load render stalls in session view.
   - Add regression checks so theme toggles never gate UI visibility.
 - Host handoff protocol:
@@ -15,6 +23,20 @@
   - Persist recent room name and transport mode in local storage.
   - Offer one-click rejoin on app load.
 
+## Product and UX Improvements
+
+- Compact timer editing UI:
+  - Convert remaining-time controls to a compact `MM:SS` interaction pattern.
+- Branded onboarding:
+  - Add landing page examples for common room naming conventions.
+- Room personalization follow-ons:
+  - Persist room theme defaults for quick room recreation.
+  - Add contrast validation messaging when custom accents reduce readability.
+- Accessibility pass:
+  - Full keyboard controls and improved aria-live announcements.
+- Notification controls:
+  - Per-user sound toggle and volume preference.
+
 ## Collaboration Features
 
 - Shared room notes:
@@ -24,25 +46,10 @@
 - Optional host moderation:
   - Host-only lock for schedule changes.
 
-## Product and UX Improvements
-
-- Safer schedule controls:
-  - Make schedule edits clearly non-destructive during active timers.
-  - Add explicit confirmation when changes shorten active phase durations.
-- Compact timer editing UI:
-  - Convert remaining-time controls to a compact `MM:SS` interaction pattern.
-- Branded onboarding:
-  - Landing page examples for common room naming conventions.
-- Room personalization:
-  - Add room display name, emoji, and accent color customization.
-  - Derive legible gradients in both light and dark modes.
-- Accessibility pass:
-  - Full keyboard controls and improved aria-live announcements.
-- Notification controls:
-  - Per-user sound toggle and volume preference.
-
 ## Engineering Enhancements
 
+- Visual diff regression tooling:
+  - Add light/dark screenshot baseline comparison for room theme parity.
 - Transport abstraction tests:
   - Integration tests that run against both `peerjs` and `broadcast` adapters.
 - Contract tests for session messages:

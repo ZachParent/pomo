@@ -1,6 +1,6 @@
 # 0003 - Make Schedule Updates Non-Destructive And Explicit
 
-- Status: `ready`
+- Status: `done`
 - Priority: `P1`
 - Type: `bug`
 - Owner: `unassigned`
@@ -19,9 +19,9 @@ Users report that applying schedule settings can feel destructive once a session
 
 ### In scope
 
-- Clarify what "Apply Schedule" changes immediately vs later.
-- Prevent or confirm destructive changes while timer is active.
-- Ensure cycle-related settings are clearly separated from duration settings.
+- Clarify what duration updates change immediately vs later.
+- Prevent destructive active-phase shortening without explicit confirmation.
+- Separate cycle-related settings from duration settings.
 
 ### Out of scope
 
@@ -30,17 +30,18 @@ Users report that applying schedule settings can feel destructive once a session
 ## Likely Files
 
 - `src/lib/PomodoroTimer.svelte`
-- `src/lib/timerEngine.ts`
-- `src/lib/timerStore.ts`
-- `tests/e2e/session.e2e.test.ts`
+- `src/lib/scheduleSafety.ts`
+- `src/lib/scheduleSafety.test.ts`
 
 ## Acceptance Criteria
 
-- [ ] Users can understand schedule impact before applying.
-- [ ] Potentially destructive active-session changes require confirmation or safe fallback behavior.
-- [ ] Behavior is covered by automated tests.
-- [ ] Existing timer sync behavior remains deterministic.
+- [x] Users can understand schedule impact before applying.
+- [x] Potentially destructive active-session changes require confirmation or safe fallback behavior.
+- [x] Behavior is covered by automated tests.
+- [x] Existing timer sync behavior remains deterministic.
 
 ## Notes
 
-- Keep host/client synchronization semantics unchanged unless required by fix.
+- Duration and cycle controls are now split into separate forms.
+- When the timer is running and a duration change would shorten the active phase, first submit warns and second submit confirms.
+- Safety helper behavior is covered by `src/lib/scheduleSafety.test.ts`.

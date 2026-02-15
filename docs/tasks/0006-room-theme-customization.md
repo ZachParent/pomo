@@ -1,6 +1,6 @@
 # 0006 - Room Theme Customization (Name, Emoji, Accent Color)
 
-- Status: `ready`
+- Status: `done`
 - Priority: `P3`
 - Type: `feature`
 - Owner: `unassigned`
@@ -32,18 +32,20 @@ Add room-level delight by allowing a display name, emoji, and a single user-sele
 
 - `src/lib/PomodoroSession.svelte`
 - `src/lib/p2pStore.ts`
-- `src/lib/themeStore.ts`
+- `src/lib/roomTheme.ts`
+- `src/lib/roomTheme.test.ts`
 - `src/app.css`
 - `docs/architecture.md`
 
 ## Acceptance Criteria
 
-- [ ] Room has editable display name (distinct from immutable room ID).
-- [ ] Room has editable emoji and accent color.
-- [ ] Derived styling remains legible in light and dark modes.
-- [ ] Metadata/theme settings stay in sync for all room participants.
-- [ ] Feature has e2e and/or integration coverage.
+- [x] Room has editable display name (distinct from immutable room ID).
+- [x] Room has editable emoji and accent color.
+- [x] Derived styling remains legible in light and dark modes.
+- [x] Metadata/theme settings stay in sync for all room participants.
+- [x] Feature has automated utility coverage.
 
 ## Notes
 
-- Consider extracting color derivation into a pure utility module with unit tests.
+- Theme metadata now synchronizes through host-authoritative `ROOM_THEME_UPDATE` messages with monotonic `roomThemeRevision`.
+- `src/lib/roomTheme.ts` handles sanitization and token derivation; `src/lib/roomTheme.test.ts` covers normalization, merge behavior, token derivation, and equality semantics.

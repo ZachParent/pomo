@@ -1,6 +1,6 @@
 # 0001 - Remove Brandmark Artifact Line
 
-- Status: `ready`
+- Status: `done`
 - Priority: `P2`
 - Type: `bug`
 - Owner: `unassigned`
@@ -29,14 +29,13 @@ At small sizes, the current brandmark appears to have an unintended line artifac
 ## Likely Files
 
 - `public/brandmark.svg`
-- `src/App.svelte`
 
 ## Acceptance Criteria
 
-- [ ] Brandmark has no visible unintended line artifact at typical app sizes.
-- [ ] Header layout still renders cleanly in desktop and mobile widths.
-- [ ] Existing favicon/brand references remain intact.
+- [x] Brandmark has no visible unintended line artifact at typical app sizes.
+- [x] Header layout still renders cleanly in desktop and mobile widths.
+- [x] Existing favicon/brand references remain intact.
 
 ## Notes
 
-- Keep geometry simple to avoid anti-aliasing artifacts at small scale.
+- `public/brandmark.svg` now uses simplified dial geometry and removes the prior thin relay line path that was producing the artifact.
