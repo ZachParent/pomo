@@ -35,6 +35,7 @@
   - catch-up behavior after long delays
   - timer state sanitization, reset, formatting, and progress bounds
   - schedule duration safety logic (`src/lib/scheduleSafety.test.ts`)
+  - alert transition fallback/suppression logic (`src/lib/alertFeedback.test.ts`)
   - room theme normalization and token derivation (`src/lib/roomTheme.test.ts`)
 
 Run:
@@ -51,11 +52,13 @@ just test-unit
 - Coverage:
   - home route renders room controls immediately on first load (no theme-toggle workaround required)
   - connecting-state host fallback controls
+  - pre-connect theme controls are shown as locked/non-actionable
   - host lifecycle (start/pause/reset/leave)
   - no-stall transition from work to break
-  - remaining-time editing and editor toggle behavior
+  - remaining-time editing is explicit (non-hover) and always directly actionable
   - cycle settings and duration settings behavior
   - active-phase duration-shortening warning + confirmation behavior
+  - alert sound preference selection and persistence
   - host/client synchronization in multi-page sessions
   - client-issued control requests (pause/time edits)
   - room theme synchronization plus draft reset behavior

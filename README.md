@@ -2,6 +2,7 @@
 
 Collaborative Pomodoro rooms with direct links and synchronized timers.
 The UI is tuned for compact, single-screen workflows on both desktop and mobile.
+Per-user alert sounds are selectable in-session and saved locally.
 
 ## Stack
 

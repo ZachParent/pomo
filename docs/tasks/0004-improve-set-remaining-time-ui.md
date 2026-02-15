@@ -1,6 +1,6 @@
 # 0004 - Improve Set Remaining Time UI
 
-- Status: `ready`
+- Status: `done`
 - Priority: `P1`
 - Type: `bug`
 - Owner: `unassigned`
@@ -13,14 +13,14 @@
 
 ## Summary
 
-The remaining-time editor currently looks like a wide form with oversized number inputs for small values. Desired behavior is a compact minute/second (`MM:SS`) control that stays out of the way until user intent is clear (hover/focus).
+The previous hover-reveal behavior for remaining-time editing hid key controls and caused discoverability issues. The flow now uses explicit always-visible controls with compact `MM:SS` fields.
 
 ## Scope
 
 ### In scope
 
 - Redesign remaining-time controls to compact side-by-side minute/second inputs.
-- Prefer hover/focus reveal instead of always-visible form-like controls.
+- Remove hover-reveal interaction so controls are immediately actionable.
 - Preserve accessibility and keyboard operation.
 
 ### Out of scope
@@ -35,11 +35,12 @@ The remaining-time editor currently looks like a wide form with oversized number
 
 ## Acceptance Criteria
 
-- [ ] Remaining-time controls render as compact side-by-side minute/second inputs.
-- [ ] Controls are hidden by default and shown via hover/focus intent.
-- [ ] Keyboard and screen-reader interactions remain usable.
-- [ ] Existing remaining-time e2e flow passes or is updated.
+- [x] Remaining-time controls render as compact side-by-side minute/second inputs.
+- [x] Controls are visible and directly actionable without hover/focus reveal.
+- [x] Keyboard and screen-reader interactions remain usable.
+- [x] Existing remaining-time e2e flow passes or is updated.
 
 ## Notes
 
-- Keep test selectors stable where possible to minimize downstream churn.
+- Removed `toggle-remaining-editor` affordance and hover-only CSS transitions.
+- Updated Playwright coverage to assert direct visibility of remaining-time controls.

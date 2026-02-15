@@ -173,41 +173,53 @@
     <button type="button" on:click={leaveSession}>Leave</button>
   </div>
 
-  <form class="room-theme-form" on:submit|preventDefault={applyRoomTheme}>
-    <h3>Room Theme</h3>
-    <div class="room-theme-grid">
-      <label>
-        Display Name
-        <input
-          data-testid="room-display-name-input"
-          bind:value={displayNameInput}
-          maxlength="48"
-          autocomplete="off"
-        />
-      </label>
-      <label>
-        Emoji
-        <input
-          data-testid="room-emoji-input"
-          bind:value={emojiInput}
-          maxlength="8"
-          autocomplete="off"
-        />
-      </label>
-      <label>
-        Accent Color
-        <input
-          data-testid="room-accent-input"
-          bind:value={accentColorInput}
-          type="color"
-        />
-      </label>
-    </div>
-    <div class="room-theme-actions">
-      <button type="submit" class="primary">Save Theme</button>
-      <button type="button" on:click={resetThemeDraft}>Reset</button>
-    </div>
-  </form>
+  {#if $p2pState.isConnected}
+    <form class="room-theme-form" on:submit|preventDefault={applyRoomTheme}>
+      <h3>Room Theme</h3>
+      <div class="room-theme-grid">
+        <label>
+          Display Name
+          <input
+            data-testid="room-display-name-input"
+            bind:value={displayNameInput}
+            maxlength="48"
+            autocomplete="off"
+          />
+        </label>
+        <label>
+          Emoji
+          <input
+            data-testid="room-emoji-input"
+            bind:value={emojiInput}
+            maxlength="8"
+            autocomplete="off"
+          />
+        </label>
+        <label>
+          Accent Color
+          <input
+            data-testid="room-accent-input"
+            bind:value={accentColorInput}
+            type="color"
+          />
+        </label>
+      </div>
+      <div class="room-theme-actions">
+        <button type="submit" class="primary">Save Theme</button>
+        <button type="button" on:click={resetThemeDraft}>Reset</button>
+      </div>
+    </form>
+  {:else}
+    <section
+      class="room-theme-form room-theme-form-locked"
+      data-testid="room-theme-locked"
+    >
+      <h3>Room Theme</h3>
+      <p class="editor-note">
+        Theme controls unlock after you connect to a host or start hosting this room.
+      </p>
+    </section>
+  {/if}
 
   {#if !sessionBootstrapped}
     <div class="status status-waiting" data-testid="session-status">

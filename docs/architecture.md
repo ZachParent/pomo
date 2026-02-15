@@ -15,8 +15,8 @@ Room sessions now include synchronized room theme metadata (`displayName`, `emoj
 
 - `src/App.svelte`: shell, pathname-based view selection, compact layout structure, icon-based theme toggle.
 - `src/lib/Home.svelte`: room entry and route handoff.
-- `src/lib/PomodoroSession.svelte`: connection lifecycle, host/join fallback actions, room theme form, session-level theme styling.
-- `src/lib/PomodoroTimer.svelte`: timer rendering, controls, schedule editing safety messaging, alerts.
+- `src/lib/PomodoroSession.svelte`: connection lifecycle, host/join fallback actions, connection-gated room theme form, session-level theme styling.
+- `src/lib/PomodoroTimer.svelte`: timer rendering, controls, schedule editing safety messaging, hidden-tab-safe alerts, and per-user sound selection.
 - `src/lib/navigation.ts`: lightweight programmatic navigation helper that pushes/replaces history and emits `popstate` to keep app view state synchronized.
 
 2. Timer Core
@@ -24,6 +24,7 @@ Room sessions now include synchronized room theme metadata (`displayName`, `emoj
 - `src/lib/timerEngine.ts`: pure timer state machine with deterministic projection/synchronization.
 - `src/lib/timerStore.ts`: Svelte store wrapper for state mutation and conflict-safe remote updates.
 - `src/lib/scheduleSafety.ts`: pure helpers for duration payload normalization and active-phase shortening detection.
+- `src/lib/alertFeedback.ts`: pure helper to determine when UI should fire alert feedback across token-based and projected phase transitions.
 
 3. Room Theme
 
@@ -83,7 +84,7 @@ Host synchronization uses elapsed-time integration, not naive decrement loops. T
 - App-level pathname parsing avoids root-route activation stalls and keeps home/session rendering deterministic under the `/pomo/` base path.
 - Connecting-state host fallback actions are available when `canBecomeHost` is true, without waiting for timeout expiration.
 - Host heartbeat reconciles delayed timers and rebroadcasts canonical state.
-- UI projects timer display from state+clock to avoid visual freezes.
+- UI projects timer display from state+clock to avoid visual freezes and includes a phase-transition fallback path for alert feedback when token commits lag behind projected transitions.
 - Room theme updates are sanitized and ignored when stale (`roomThemeRevision` ordering).
 
 ## Assets and Branding

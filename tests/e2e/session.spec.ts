@@ -72,6 +72,8 @@ test("shows host fallback controls while connecting to an empty room", async ({
   );
   await expect(page.getByTestId("session-status")).toContainText("You can host now");
   await expect(page.getByTestId("connecting-host-fallback")).toBeVisible();
+  await expect(page.getByTestId("room-theme-locked")).toBeVisible();
+  await expect(page.getByTestId("room-display-name-input")).toHaveCount(0);
   await expect(page.getByTestId("timer-shell")).toHaveCount(0);
 });
 
@@ -146,20 +148,15 @@ test("applies cycle settings and clamps invalid values", async ({ page }) => {
   await expect(page.locator(".cycle")).toContainText("Cycle 0 of 1");
 });
 
-test("allows expanding and collapsing the remaining-time editor", async ({ page }) => {
+test("remaining-time editor fields are always visible without hover", async ({
+  page,
+}) => {
   await startHostingRoom(page, makeRoomName("editor"));
 
-  const toggle = page.getByTestId("toggle-remaining-editor");
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(toggle).toContainText("Edit");
-
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-expanded", "true");
-  await expect(toggle).toContainText("Hide");
-
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(toggle).toContainText("Edit");
+  await expect(page.getByTestId("remaining-editor-panel")).toBeVisible();
+  await expect(page.getByTestId("remaining-minutes")).toBeVisible();
+  await expect(page.getByTestId("remaining-seconds")).toBeVisible();
+  await expect(page.getByTestId("toggle-remaining-editor")).toHaveCount(0);
 });
 
 test("synchronizes timer updates and client-issued controls across participants", async ({
@@ -472,6 +469,29 @@ test("theme form submit is a no-op when no values changed", async ({ page }) => 
   await expect(page.getByTestId("room-display-name")).toHaveText(
     (headingBefore ?? "").trim()
   );
+});
+
+test("alert sound preference can be selected and persists after reload", async ({
+  page,
+}) => {
+  await startHostingRoom(page, makeRoomName("alert-sound"));
+
+  const soundSelect = page.getByTestId("alert-sound-select");
+  await expect(soundSelect).toBeVisible();
+  await soundSelect.selectOption("bell");
+  await expect(soundSelect).toHaveValue("bell");
+  await expect(page.getByTestId("preview-alert-sound")).toBeVisible();
+  await expect
+    .poll(async () =>
+      page.evaluate(() => window.localStorage.getItem("pomo.alertSound"))
+    )
+    .toBe("bell");
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("connecting-host-fallback")).toBeVisible();
+  await page.getByTestId("start-hosting").click();
+  await expect(page.getByTestId("timer-shell")).toBeVisible();
+  await expect(page.getByTestId("alert-sound-select")).toHaveValue("bell");
 });
 
 const closeExtraPages = async (context: BrowserContext): Promise<void> => {

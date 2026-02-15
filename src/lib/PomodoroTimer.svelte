@@ -13,15 +13,35 @@
     willShortenActivePhase,
     type DurationMinutesInput,
   } from "./scheduleSafety";
-  import { timerState, toTimerDisplayState } from "./timerStore";
+  import { evaluateAlertTransition } from "./alertFeedback";
+  import { timerState, toTimerDisplayState, type TimerPhase } from "./timerStore";
   import { withBasePath } from "./basePath";
+
+  type AlertSound = "chime" | "bell" | "marimba" | "pulse";
+
+  interface AlertSoundOption {
+    value: AlertSound;
+    label: string;
+  }
+
+  const ALERT_SOUND_STORAGE_KEY = "pomo.alertSound";
+  const ALERT_SOUND_OPTIONS: AlertSoundOption[] = [
+    { value: "chime", label: "Chime (classic)" },
+    { value: "bell", label: "Bell" },
+    { value: "marimba", label: "Marimba" },
+    { value: "pulse", label: "Pulse beep" },
+  ];
 
   let nowMs = Date.now();
   let clockId: number | null = null;
   let audioPlayer: HTMLAudioElement | null = null;
+  let audioContext: AudioContext | null = null;
   let flashActive = false;
   let flashTimeoutId: number | null = null;
   let lastAlertToken = -1;
+  let lastPhase: TimerPhase | null = null;
+  let suppressedTokenAlert: number | null = null;
+  let pendingVisibilityAlert = false;
   let lastSyncedRevision = -1;
 
   let remainingMinutes = 0;
@@ -32,7 +52,8 @@
   let cycleCount = 0;
   let longBreakInterval = 4;
 
-  let remainingEditorPinned = false;
+  let selectedAlertSound: AlertSound = "chime";
+  let alertSoundReady = false;
   let scheduleSafetyMessage = "";
   let pendingDurationConfirmKey: string | null = null;
 
@@ -68,22 +89,164 @@
   };
 
   const playAlert = (): void => {
-    if (!audioPlayer) {
+    if (selectedAlertSound === "chime") {
+      if (!audioPlayer) {
+        return;
+      }
+
+      audioPlayer.currentTime = 0;
+      audioPlayer.play().catch(() => {
+        // Ignore autoplay policy errors. We still keep visual feedback.
+      });
       return;
     }
 
-    audioPlayer.currentTime = 0;
-    audioPlayer.play().catch(() => {
-      // Ignore autoplay policy errors. We still keep visual feedback.
-    });
+    const context = ensureAudioContext();
+    if (!context) {
+      return;
+    }
+
+    if (selectedAlertSound === "bell") {
+      playBellTone(context);
+      return;
+    }
+
+    if (selectedAlertSound === "marimba") {
+      playMarimbaTone(context);
+      return;
+    }
+
+    playPulseTone(context);
   };
 
-  $: if (view.alertToken !== lastAlertToken) {
-    if (lastAlertToken >= 0 && view.alertToken > lastAlertToken) {
-      triggerFlash();
-      playAlert();
+  const playAlertFeedback = (): void => {
+    triggerFlash();
+    if (typeof document !== "undefined" && document.hidden) {
+      pendingVisibilityAlert = true;
+      return;
     }
+
+    pendingVisibilityAlert = false;
+    playAlert();
+  };
+
+  const ensureAudioContext = (): AudioContext | null => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    if (!audioContext) {
+      audioContext = new AudioContext();
+    }
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume().catch(() => {
+        // Ignore autoplay policy failures.
+      });
+    }
+
+    return audioContext;
+  };
+
+  const scheduleTone = (
+    context: AudioContext,
+    frequency: number,
+    startOffsetSeconds: number,
+    durationSeconds: number,
+    type: "sine" | "triangle" | "square" | "sawtooth",
+    gainPeak = 0.2
+  ): void => {
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
+    const startAt = context.currentTime + startOffsetSeconds;
+    const endAt = startAt + durationSeconds;
+
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+
+    gainNode.gain.setValueAtTime(0.0001, startAt);
+    gainNode.gain.exponentialRampToValueAtTime(gainPeak, startAt + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, endAt);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    oscillator.start(startAt);
+    oscillator.stop(endAt + 0.02);
+  };
+
+  const playBellTone = (context: AudioContext): void => {
+    scheduleTone(context, 784, 0, 0.45, "sine", 0.22);
+    scheduleTone(context, 1_176, 0.01, 0.38, "triangle", 0.13);
+  };
+
+  const playMarimbaTone = (context: AudioContext): void => {
+    scheduleTone(context, 523.25, 0, 0.19, "triangle", 0.2);
+    scheduleTone(context, 659.25, 0.12, 0.19, "triangle", 0.18);
+    scheduleTone(context, 783.99, 0.24, 0.22, "triangle", 0.16);
+  };
+
+  const playPulseTone = (context: AudioContext): void => {
+    scheduleTone(context, 988, 0, 0.09, "square", 0.16);
+    scheduleTone(context, 988, 0.15, 0.09, "square", 0.16);
+    scheduleTone(context, 1_319, 0.3, 0.1, "square", 0.15);
+  };
+
+  const flushPendingAlert = (): void => {
+    nowMs = Date.now();
+    if (typeof document === "undefined" || document.hidden || !pendingVisibilityAlert) {
+      return;
+    }
+
+    pendingVisibilityAlert = false;
+    triggerFlash();
+    playAlert();
+  };
+
+  const previewAlertSound = (): void => {
+    pendingVisibilityAlert = false;
+    triggerFlash();
+    playAlert();
+  };
+
+  const loadStoredAlertSound = (): AlertSound => {
+    if (typeof window === "undefined") {
+      return "chime";
+    }
+
+    const stored = window.localStorage.getItem(ALERT_SOUND_STORAGE_KEY);
+    return ALERT_SOUND_OPTIONS.some((option) => option.value === stored)
+      ? (stored as AlertSound)
+      : "chime";
+  };
+
+  const persistAlertSound = (value: AlertSound): void => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(ALERT_SOUND_STORAGE_KEY, value);
+  };
+
+  $: if (alertSoundReady) {
+    persistAlertSound(selectedAlertSound);
+  }
+
+  $: {
+    const transition = evaluateAlertTransition({
+      previousAlertToken: lastAlertToken,
+      previousPhase: lastPhase,
+      suppressedTokenAlert,
+      currentAlertToken: view.alertToken,
+      currentPhase: view.phase,
+    });
+
+    if (transition.shouldAlert) {
+      playAlertFeedback();
+    }
+
+    suppressedTokenAlert = transition.nextSuppressedTokenAlert;
     lastAlertToken = view.alertToken;
+    lastPhase = view.phase;
   }
 
   const setRemaining = (): void => {
@@ -128,20 +291,26 @@
     );
   };
 
-  const toggleRemainingEditor = (): void => {
-    remainingEditorPinned = !remainingEditorPinned;
-  };
-
   onMount(() => {
     const basePath = import.meta.env.BASE_URL;
     const chimePath = withBasePath(basePath, "/chime-alert.mp3");
     audioPlayer = new Audio(chimePath);
     audioPlayer.preload = "auto";
     audioPlayer.load();
+    selectedAlertSound = loadStoredAlertSound();
+    alertSoundReady = true;
 
     clockId = window.setInterval(() => {
       nowMs = Date.now();
     }, 250);
+
+    document.addEventListener("visibilitychange", flushPendingAlert);
+    window.addEventListener("focus", flushPendingAlert);
+
+    return () => {
+      document.removeEventListener("visibilitychange", flushPendingAlert);
+      window.removeEventListener("focus", flushPendingAlert);
+    };
   });
 
   onDestroy(() => {
@@ -153,6 +322,13 @@
     if (audioPlayer) {
       audioPlayer.pause();
       audioPlayer = null;
+    }
+
+    if (audioContext) {
+      audioContext.close().catch(() => {
+        // Ignore close failures during teardown.
+      });
+      audioContext = null;
     }
 
     clearFlashTimeout();
@@ -205,23 +381,29 @@
     </button>
   </div>
 
-  <div class="editor-grid">
-    <section
-      class:remaining-editor-pinned={remainingEditorPinned}
-      class="editor remaining-editor"
-      data-testid="remaining-editor"
+  <div class="sound-row">
+    <label for="alert-sound-select">Alert sound</label>
+    <select
+      id="alert-sound-select"
+      data-testid="alert-sound-select"
+      bind:value={selectedAlertSound}
     >
-      <div class="remaining-editor-header">
-        <h3>Adjust Remaining Time</h3>
-        <button
-          type="button"
-          data-testid="toggle-remaining-editor"
-          aria-expanded={remainingEditorPinned}
-          on:click={toggleRemainingEditor}
-        >
-          {remainingEditorPinned ? "Hide" : "Edit"}
-        </button>
-      </div>
+      {#each ALERT_SOUND_OPTIONS as option}
+        <option value={option.value}>{option.label}</option>
+      {/each}
+    </select>
+    <button
+      type="button"
+      data-testid="preview-alert-sound"
+      on:click={previewAlertSound}
+    >
+      Preview
+    </button>
+  </div>
+
+  <div class="editor-grid">
+    <section class="editor remaining-editor" data-testid="remaining-editor">
+      <h3>Adjust Remaining Time</h3>
       <form
         class="remaining-inline-form"
         data-testid="remaining-editor-panel"
