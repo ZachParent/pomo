@@ -31,7 +31,7 @@ The remaining-time editor currently looks like a wide form with oversized number
 
 - `src/lib/PomodoroTimer.svelte`
 - `src/app.css`
-- `tests/e2e/session.e2e.test.ts`
+- `tests/e2e/session.spec.ts`
 
 ## Acceptance Criteria
 

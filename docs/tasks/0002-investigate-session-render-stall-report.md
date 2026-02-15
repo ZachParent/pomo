@@ -32,7 +32,7 @@ A user-reported issue indicates the session UI does not appear until toggling li
 - `src/lib/PomodoroSession.svelte`
 - `src/lib/p2pStore.ts`
 - `src/App.svelte`
-- `tests/e2e/session.e2e.test.ts`
+- `tests/e2e/session.spec.ts`
 
 ## Acceptance Criteria
 
