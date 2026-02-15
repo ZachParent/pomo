@@ -6,9 +6,10 @@ This repository is optimized for autonomous and human contributors.
 
 1. Use `just` as the command entrypoint for all routine tasks.
 2. Keep `README.md`, `docs/architecture.md`, and `docs/roadmap.md` current with code changes.
-3. Update `docs/tasks.md` as work progresses. Do not leave stale unchecked items.
+3. Update `docs/tasks.md` and `docs/tasks/*.md` as work progresses. Do not leave stale ticket state.
 4. Prefer deterministic behavior and tests over assumptions.
 5. Do not merge changes that skip `just verify`.
+6. Ticket docs must pass `just lint-tickets` (template + index consistency).
 
 ## Fast Start
 
@@ -42,12 +43,14 @@ When architecture or behavior changes:
 2. Update `docs/testing.md` if verification changes.
 3. Update `docs/roadmap.md` for future-facing ideas and follow-ons.
 4. Update `docs/tasks.md` with status and dates.
+5. Update the corresponding `docs/tasks/NNNN-*.md` file for the work item.
 
 ## Quality Gates
 
 All changes should pass:
 
 ```bash
+just lint-tickets
 just lint
 just typecheck
 just test-unit
