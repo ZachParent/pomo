@@ -52,6 +52,8 @@
   let lastPhase: TimerPhase | null = null;
   let suppressedTokenAlert: number | null = null;
   let pendingVisibilityAlert = false;
+  let pendingVisibilityRetryId: number | null = null;
+  const PENDING_ALERT_RETRY_DELAY_MS = 1_200;
   let lastSyncedRevision = -1;
 
   let settingsOpen = false;
@@ -117,45 +119,107 @@
     }, 900);
   };
 
-  const playAlert = (): void => {
+  const stopPendingVisibilityAlertRetry = (): void => {
+    if (pendingVisibilityRetryId !== null) {
+      clearInterval(pendingVisibilityRetryId);
+      pendingVisibilityRetryId = null;
+    }
+  };
+
+  const onAlertPlaybackStarted = (): void => {
+    stopPendingVisibilityAlertRetry();
+    pendingVisibilityAlert = false;
+  };
+
+  const queuePendingVisibilityAlert = (): void => {
+    pendingVisibilityAlert = true;
+    if (pendingVisibilityRetryId !== null) {
+      return;
+    }
+
+    pendingVisibilityRetryId = window.setInterval(() => {
+      if (!pendingVisibilityAlert) {
+        stopPendingVisibilityAlertRetry();
+        return;
+      }
+
+      playAlert(false);
+    }, PENDING_ALERT_RETRY_DELAY_MS);
+  };
+
+  const playAlert = (shouldQueueOnFailure = true): void => {
     if (selectedAlertSound === "chime") {
       if (!audioPlayer) {
+        queuePendingVisibilityAlert();
         return;
       }
 
       audioPlayer.currentTime = 0;
-      audioPlayer.play().catch(() => {
-        // Ignore autoplay policy errors. We still keep visual feedback.
-      });
+      audioPlayer
+        .play()
+        .then(onAlertPlaybackStarted)
+        .catch(() => {
+          if (shouldQueueOnFailure) {
+            queuePendingVisibilityAlert();
+          }
+        });
       return;
     }
 
     const context = ensureAudioContext();
     if (!context) {
+      queuePendingVisibilityAlert();
       return;
     }
 
-    if (selectedAlertSound === "bell") {
-      playBellTone(context);
-      return;
-    }
+    try {
+      const playTone = (): void => {
+        if (selectedAlertSound === "bell") {
+          playBellTone(context);
+        } else if (selectedAlertSound === "marimba") {
+          playMarimbaTone(context);
+        } else {
+          playPulseTone(context);
+        }
+      };
 
-    if (selectedAlertSound === "marimba") {
-      playMarimbaTone(context);
-      return;
-    }
+      if (context.state === "suspended") {
+        audioContext
+          ?.resume()
+          .then(() => {
+            if (document.hidden && shouldQueueOnFailure) {
+              queuePendingVisibilityAlert();
+              return;
+            }
 
-    playPulseTone(context);
+            playTone();
+            onAlertPlaybackStarted();
+          })
+          .catch(() => {
+            if (shouldQueueOnFailure) {
+              queuePendingVisibilityAlert();
+            }
+          });
+        return;
+      }
+
+      playTone();
+      onAlertPlaybackStarted();
+    } catch {
+      if (shouldQueueOnFailure) {
+        queuePendingVisibilityAlert();
+      }
+    }
   };
 
   const playAlertFeedback = (): void => {
     triggerFlash();
     if (typeof document !== "undefined" && document.hidden) {
-      pendingVisibilityAlert = true;
+      queuePendingVisibilityAlert();
       return;
     }
 
-    pendingVisibilityAlert = false;
+    onAlertPlaybackStarted();
     playAlert();
   };
 
@@ -222,17 +286,16 @@
 
   const flushPendingAlert = (): void => {
     nowMs = Date.now();
-    if (typeof document === "undefined" || document.hidden || !pendingVisibilityAlert) {
+    if (typeof document === "undefined" || !pendingVisibilityAlert) {
       return;
     }
 
-    pendingVisibilityAlert = false;
     triggerFlash();
-    playAlert();
+    playAlert(true);
   };
 
   const previewAlertSound = (): void => {
-    pendingVisibilityAlert = false;
+    onAlertPlaybackStarted();
     triggerFlash();
     playAlert();
   };
@@ -416,6 +479,8 @@
   });
 
   onDestroy(() => {
+    stopPendingVisibilityAlertRetry();
+
     if (clockId !== null) {
       clearInterval(clockId);
       clockId = null;

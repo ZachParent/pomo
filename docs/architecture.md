@@ -90,6 +90,7 @@ Host synchronization uses elapsed-time integration, not naive decrement loops. T
 - Connecting-state host fallback actions are available when `canBecomeHost` is true, without waiting for timeout expiration.
 - Host heartbeat reconciles delayed timers and rebroadcasts canonical state.
 - UI projects timer display from state+clock to avoid visual freezes and includes a phase-transition fallback path for alert feedback when token commits lag behind projected transitions.
+- Alert playback includes retrying behavior for suppressed audio while hidden, with periodic attempts and immediate retry stop on first successful playback attempt.
 - Room theme updates are sanitized and ignored when stale (`roomThemeRevision` ordering).
 - Settings are hidden by default and rendered as a modal (desktop) / bottom sheet (mobile) to keep the timer surface one-screen dense.
 - Theme edits (name, accent, emoji) dispatch immediately without save/cancel confirmation state.

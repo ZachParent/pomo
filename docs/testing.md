@@ -59,9 +59,10 @@ just test-unit
   - settings help text appears behind an explicit `?` tooltip control
   - cycle settings and duration settings behavior
   - active-phase duration-shortening warning + confirmation behavior
-  - room theme edits apply immediately without save/cancel, including emoji picker events
-  - alert sound preference selection and persistence
-  - mobile viewport settings-sheet behavior and control visibility
+- room theme edits apply immediately without save/cancel, including emoji picker events
+- alert sound preference selection and persistence
+- background alert recovery validation when playback is initially blocked by hidden-tab state
+- mobile viewport settings-sheet behavior and control visibility
 - host/client synchronization in multi-page sessions
 - automatic host failover after host disconnect with timer continuity assertions
 - shared-link resilience checks using room-query URLs

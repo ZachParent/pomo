@@ -1,6 +1,6 @@
 # Roadmap
 
-## Recently Completed (2026-02-15)
+## Recently Completed (2026-02-17)
 
 - Ticket `0001`: removed brandmark artifact line by simplifying `public/brandmark.svg`.
 - Ticket `0002`: fixed base-path session/home render stalls and added first-load home-route regression coverage.
@@ -15,6 +15,7 @@
 - Ticket `0011`: moved advanced controls behind responsive settings modal/sheet, switched room theme editing to instant sync updates, and integrated out-of-the-box emoji picking.
 - Ticket `0012`: added automatic host failover with client liveness probes and timer-continuity takeover coverage.
 - Ticket `0013`: improved shared-link routing resilience with room-query fallback URL support.
+- Ticket `0014`: retried blocked alert playback while tab is hidden to improve timer alert reliability.
 
 ## Near-Term Reliability
 

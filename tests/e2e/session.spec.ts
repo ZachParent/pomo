@@ -60,6 +60,80 @@ const setRemaining = async (
   await closeSettings(page);
 };
 
+const installSuspendedAudioContextStub = async (page: Page): Promise<void> => {
+  await page.addInitScript(() => {
+    const debug = {
+      calls: [] as Array<{ type: string; resumed: boolean }>,
+    };
+
+    class SuspendedAudioContext {
+      state: AudioContextState = "suspended";
+      currentTime = 0;
+      destination = {};
+      private resumed = false;
+
+      resume(): Promise<void> {
+        this.resumed = true;
+        this.state = "running";
+        debug.calls.push({ type: "resume", resumed: this.resumed });
+        return Promise.resolve();
+      }
+
+      close(): Promise<void> {
+        return Promise.resolve();
+      }
+
+      createOscillator() {
+        debug.calls.push({ type: "create-oscillator", resumed: this.resumed });
+        return {
+          type: "",
+          frequency: { setValueAtTime: () => {} },
+          start: () => {
+            debug.calls.push({ type: "start", resumed: this.resumed });
+            if (!this.resumed) {
+              throw new Error("AudioContextNotResumed");
+            }
+          },
+          stop: () => {},
+          connect: () => {},
+        };
+      }
+
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => {},
+          },
+          connect: () => {},
+        };
+      }
+    }
+
+    const win = window as unknown as {
+      __audioStubEvents: Array<{ type: string; resumed: boolean }>;
+    };
+    const audioContextConstructor = SuspendedAudioContext as unknown as AudioContext;
+
+    win.__audioStubEvents = debug.calls;
+    window.AudioContext = audioContextConstructor;
+  });
+};
+
+const setDocumentVisibility = async (page: Page, hidden: boolean): Promise<void> => {
+  await page.evaluate((nextHidden: boolean) => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => nextHidden,
+    });
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => (nextHidden ? "hidden" : "visible"),
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  }, hidden);
+};
+
 const startHostingRoom = async (page: Page, roomName: string): Promise<void> => {
   await page.goto(sessionPath(roomName), { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("connecting-host-fallback")).toBeVisible();
@@ -576,6 +650,62 @@ test("alert sound preference can be selected and persists after reload", async (
 
   await openSettings(page);
   await expect(page.getByTestId("alert-sound-select")).toHaveValue("bell");
+});
+
+test("alert tones recover from suspended context when tab returns to visible", async ({
+  page,
+}) => {
+  await installSuspendedAudioContextStub(page);
+  await startHostingRoom(page, makeRoomName("alert-recover"));
+
+  await openSettings(page);
+  await page.getByTestId("alert-sound-select").selectOption("bell");
+  await closeSettings(page);
+
+  await setDocumentVisibility(page, true);
+  await setRemaining(page, 0, 1);
+  await page.getByTestId("control-start").click();
+
+  await expect(page.getByTestId("timer-phase")).toContainText("Short Break");
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const win = window as unknown as {
+          __audioStubEvents: Array<{ type: string; resumed: boolean }>;
+        };
+        return win.__audioStubEvents.length;
+      })
+    )
+    .toBe(0);
+
+  await setDocumentVisibility(page, false);
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("visibilitychange"));
+  });
+
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const win = window as unknown as {
+          __audioStubEvents: Array<{ type: string; resumed: boolean }>;
+        };
+        return win.__audioStubEvents[0]?.type ?? null;
+      })
+    )
+    .toBe("resume");
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const win = window as unknown as {
+          __audioStubEvents: Array<{ type: string; resumed: boolean }>;
+        };
+        return win.__audioStubEvents.filter(
+          (event) => event.type === "start" && event.resumed
+        ).length;
+      })
+    )
+    .toBeGreaterThan(1);
 });
 
 test("settings help is behind tooltip control", async ({ page }) => {
