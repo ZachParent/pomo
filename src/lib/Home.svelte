@@ -3,9 +3,10 @@
   import { navigate } from "./navigation";
 
   const basePath = normalizeBasePath(import.meta.env.BASE_URL);
+  const roomNamePattern = /^[A-Za-z0-9-]+$/;
 
   let roomName = "";
-  let formError = "";
+  let submitError = "";
 
   const readTransportFromQuery = (): string => {
     if (import.meta.env.SSR) {
@@ -14,27 +15,57 @@
 
     const params = new URLSearchParams(window.location.search);
     const transport = params.get("transport");
-    if (transport === "broadcast") {
-      return "?transport=broadcast";
-    }
-
-    return "";
+    return transport === "broadcast" ? "broadcast" : "peerjs";
   };
 
+  const isRoomNameInvalid = (value: string): boolean => {
+    if (!value) {
+      return false;
+    }
+
+    return !roomNamePattern.test(value);
+  };
+
+  const validationMessage = (value: string): string =>
+    isRoomNameInvalid(value) ? "Room name contains an unsupported character." : "";
+
+  const joinRoomPath = (value: string): string => {
+    const mode = readTransportFromQuery();
+    const query = new URLSearchParams({ room: value });
+
+    if (mode === "broadcast") {
+      query.set("transport", "broadcast");
+    }
+
+    return `${withBasePath(basePath, "/")}?${query.toString()}`;
+  };
+
+  $: normalizedRoom = roomName.trim();
+  $: hasValidationError = isRoomNameInvalid(normalizedRoom);
+  $: canJoin = Boolean(normalizedRoom) && !hasValidationError;
+
   const submit = (): void => {
-    const normalizedRoom = roomName.trim();
     if (!normalizedRoom) {
-      formError = "Room name is required.";
+      submitError = "Room name is required.";
       return;
     }
 
-    formError = "";
-    const roomPath = withBasePath(
-      basePath,
-      `/session/${encodeURIComponent(normalizedRoom)}`
-    );
-    navigate(`${roomPath}${readTransportFromQuery()}`);
+    if (hasValidationError) {
+      submitError = validationMessage(normalizedRoom);
+      return;
+    }
+
+    submitError = "";
+    navigate(joinRoomPath(normalizedRoom));
   };
+
+  const clearSubmitError = (): void => {
+    if (submitError) {
+      submitError = "";
+    }
+  };
+
+  $: isJoinDisabled = !canJoin;
 </script>
 
 <section class="home-panel">
@@ -51,14 +82,16 @@
       id="room-name"
       data-testid="room-name-input"
       bind:value={roomName}
-      placeholder="team-standup"
       autocomplete="off"
       required
+      on:input={clearSubmitError}
     />
-    <button data-testid="join-room-button" type="submit">Join Room</button>
+    <button data-testid="join-room-button" type="submit" disabled={isJoinDisabled}>
+      Join Room
+    </button>
   </form>
 
-  {#if formError}
-    <p class="form-error">{formError}</p>
-  {/if}
+  <p class="form-error" data-testid="room-name-feedback" aria-live="polite">
+    {submitError || validationMessage(normalizedRoom) || "\u00a0"}
+  </p>
 </section>

@@ -23,6 +23,7 @@ test("hosts can copy an invite link to the clipboard", async ({
   expect(inviteLink).toContain(
     `/pomo/?room=${encodeURIComponent(roomName)}&transport=broadcast`
   );
+  expect(inviteLink).not.toContain(`/pomo/session/${encodeURIComponent(roomName)}`);
 });
 
 test("shared room links with query params connect the same room", async ({

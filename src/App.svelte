@@ -5,6 +5,8 @@
   import { normalizeBasePath, withBasePath } from "./lib/basePath";
   import { theme, toggleTheme } from "./lib/themeStore";
 
+  const roomNamePattern = /^[A-Za-z0-9-]+$/;
+
   const normalizePath = (path: string): string => {
     if (!path || path === "/") {
       return "/";
@@ -13,9 +15,10 @@
     return path.endsWith("/") ? path.slice(0, -1) : path;
   };
 
+  const isValidRoomName = (value: string): boolean => roomNamePattern.test(value);
+
   const basePath = normalizeBasePath(import.meta.env.BASE_URL);
   const homePath = withBasePath(basePath, "/");
-  const sessionPrefix = normalizePath(withBasePath(basePath, "/session"));
 
   const getCurrentPathname = (): string =>
     typeof window === "undefined" ? homePath : window.location.pathname;
@@ -25,26 +28,6 @@
 
   let currentPathname = getCurrentPathname();
   let currentSearch = getCurrentSearch();
-
-  const parseRoomName = (pathname: string): string | null => {
-    const normalizedPath = normalizePath(pathname);
-    const roomPrefix = `${sessionPrefix}/`;
-
-    if (!normalizedPath.startsWith(roomPrefix)) {
-      return null;
-    }
-
-    const encodedRoomName = normalizedPath.slice(roomPrefix.length);
-    if (!encodedRoomName || encodedRoomName.includes("/")) {
-      return null;
-    }
-
-    try {
-      return decodeURIComponent(encodedRoomName);
-    } catch {
-      return encodedRoomName;
-    }
-  };
 
   const parseRoomNameFromSearch = (search: string): string | null => {
     if (!search) {
@@ -57,11 +40,10 @@
       return null;
     }
 
-    try {
-      return decodeURIComponent(rawRoom);
-    } catch {
-      return rawRoom;
+    if (!isValidRoomName(rawRoom)) {
+      return null;
     }
+    return rawRoom;
   };
 
   const syncPathname = (): void => {
@@ -79,8 +61,7 @@
   });
 
   $: themeLabel = $theme === "light" ? "Switch to dark theme" : "Switch to light theme";
-  $: activeRoomName =
-    parseRoomName(currentPathname) ?? parseRoomNameFromSearch(currentSearch);
+  $: activeRoomName = parseRoomNameFromSearch(currentSearch);
   $: showHome =
     normalizePath(currentPathname) === normalizePath(homePath) &&
     activeRoomName === null;

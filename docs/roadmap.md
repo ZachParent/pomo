@@ -16,6 +16,7 @@
 - Ticket `0012`: added automatic host failover with client liveness probes and timer-continuity takeover coverage.
 - Ticket `0013`: improved shared-link routing resilience with room-query fallback URL support.
 - Ticket `0014`: retried blocked alert playback while tab is hidden to improve timer alert reliability.
+- Ticket `0015`: canonicalized query-route entry/links and added room name validation with stable inline feedback for bad characters.
 
 ## Near-Term Reliability
 

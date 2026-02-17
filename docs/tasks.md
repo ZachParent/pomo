@@ -28,3 +28,4 @@ Last updated: 2026-02-17
 - [x] [0012 - Automatic host failover for active clients](tasks/0012-automatic-host-failover-for-active-clients.md)
 - [x] [0013 - Query-based shared room links](tasks/0013-query-based-shared-room-links.md)
 - [x] [0014 - Reliable background alert retry](tasks/0014-reliable-background-alert-retry.md)
+- [x] [0015 - Query-Routed Room UX Validation](tasks/0015-query-room-routing-validation.md)

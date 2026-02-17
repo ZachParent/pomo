@@ -61,7 +61,7 @@ Host synchronization uses elapsed-time integration, not naive decrement loops. T
 3. Host applies actions, increments corresponding revisions, and broadcasts full timer snapshots (`STATE_UPDATE`) and room theme updates (`ROOM_THEME_UPDATE`).
 4. Clients accept timer snapshots by timer revision/timestamp and theme updates by monotonic `roomThemeRevision`.
 5. Host heartbeat periodically synchronizes and rebroadcasts running timer state; room theme is rebroadcast on initial state request and when changed.
-6. Session links support both `/session/<room-name>` path routing and root query routing (`/?room=<room-name>`) so shared links remain functional on static hosts.
+6. Session links use root query routing (`/?room=<room-name>`) as the canonical entry path for both host and peers.
 
 ## Schedule Safety Behavior
 
@@ -87,6 +87,7 @@ Host synchronization uses elapsed-time integration, not naive decrement loops. T
 
 - Runtime token guard prevents stale event handlers from mutating new sessions.
 - App-level pathname parsing avoids root-route activation stalls and keeps home/session rendering deterministic under the `/pomo/` base path.
+- Room names are validated against a strict `[A-Za-z0-9-]+` pattern at entry. Invalid names are blocked with an inline warning while preserving layout height.
 - Connecting-state host fallback actions are available when `canBecomeHost` is true, without waiting for timeout expiration.
 - Host heartbeat reconciles delayed timers and rebroadcasts canonical state.
 - UI projects timer display from state+clock to avoid visual freezes and includes a phase-transition fallback path for alert feedback when token commits lag behind projected transitions.

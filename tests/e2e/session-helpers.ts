@@ -14,8 +14,10 @@ export const makeRoomName = (prefix: string): string =>
 
 export const APP_BASE_PATH = "/pomo";
 
-export const sessionPath = (roomName: string): string =>
-  `${APP_BASE_PATH}/session/${encodeURIComponent(roomName)}?transport=broadcast`;
+export const sessionPath = (roomName: string): string => {
+  const query = new URLSearchParams({ room: roomName, transport: "broadcast" });
+  return `${APP_BASE_PATH}/?${query.toString()}`;
+};
 
 export const timerText = async (page: Page): Promise<string> =>
   (await page.getByTestId("timer-display").textContent())?.trim() ?? "";

@@ -49,6 +49,7 @@ just test-unit
 - Framework: Playwright Test
 - Location: `tests/e2e/**/*.spec.ts`
 - Transport mode: `broadcast` (deterministic local sync)
+- Playwright configuration: `fullyParallel: true`, `workers: 4`
 - Coverage:
   - home route renders room controls immediately on first load (no theme-toggle workaround required)
   - connecting-state host fallback controls
@@ -70,6 +71,7 @@ just test-unit
   - room theme synchronization plus draft reset behavior
   - host-only invite-link controls and clipboard copy behavior
   - late-join synchronization behavior
+  - room-name input validation warnings for unsupported characters
   - transport labeling and route assertions in broadcast mode
   - copy-button timeout behavior and no-op theme submit behavior
 

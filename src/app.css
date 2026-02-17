@@ -228,6 +228,7 @@ select {
 
 .form-error {
   color: var(--error-text);
+  min-height: 1.2rem;
 }
 
 .session-shell {
