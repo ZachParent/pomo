@@ -14,6 +14,7 @@
 - Ticket `0010`: hardened phase alert reliability for stalled tabs, gated pre-connect theme editing, and added persistent alert sound selection.
 - Ticket `0011`: moved advanced controls behind responsive settings modal/sheet, switched room theme editing to instant sync updates, and integrated out-of-the-box emoji picking.
 - Ticket `0012`: added automatic host failover with client liveness probes and timer-continuity takeover coverage.
+- Ticket `0013`: improved shared-link routing resilience with room-query fallback URL support.
 
 ## Near-Term Reliability
 
@@ -34,6 +35,8 @@
 - Room personalization follow-ons:
   - Persist room theme defaults for quick room recreation.
   - Add contrast validation messaging when custom accents reduce readability.
+- Shareability hardening:
+  - Keep shared links robust on static hosting by resolving `/?room=...` in the same app.
 - Accessibility pass:
   - Full keyboard controls and improved aria-live announcements.
 - Notification controls:

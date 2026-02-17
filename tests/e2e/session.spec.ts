@@ -320,8 +320,28 @@ test("hosts can copy an invite link to the clipboard", async ({
 
   const inviteLink = await page.evaluate(async () => navigator.clipboard.readText());
   expect(inviteLink).toContain(
-    `/pomo/session/${encodeURIComponent(roomName)}?transport=broadcast`
+    `/pomo/?room=${encodeURIComponent(roomName)}&transport=broadcast`
   );
+});
+
+test("shared room links with query params connect the same room", async ({
+  page,
+  context,
+}) => {
+  const roomName = makeRoomName("shared-link-query");
+  await startHostingRoom(page, roomName);
+  const sharedLink = `${APP_BASE_PATH}/?room=${encodeURIComponent(roomName)}&transport=broadcast`;
+
+  const secondClient = await context.newPage();
+  try {
+    await secondClient.goto(sharedLink, { waitUntil: "domcontentloaded" });
+    await expect(secondClient.getByTestId("timer-shell")).toBeVisible();
+    await expect(secondClient.getByTestId("session-status")).toContainText(
+      "Connected to host."
+    );
+  } finally {
+    await secondClient.close();
+  }
 });
 
 test("leave session updates route to the app root", async ({ page }) => {
@@ -387,7 +407,8 @@ test("copy link remains scoped to current transport mode", async ({
 
   await page.getByTestId("copy-link-button").click();
   const inviteLink = await page.evaluate(async () => navigator.clipboard.readText());
-  expect(inviteLink.endsWith("?transport=broadcast")).toBe(true);
+  expect(inviteLink).toContain("transport=broadcast");
+  expect(inviteLink).toContain(`/pomo/?room=${encodeURIComponent(roomName)}`);
 });
 
 test("non-host clients do not see invite-link host controls", async ({

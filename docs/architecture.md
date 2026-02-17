@@ -61,6 +61,7 @@ Host synchronization uses elapsed-time integration, not naive decrement loops. T
 3. Host applies actions, increments corresponding revisions, and broadcasts full timer snapshots (`STATE_UPDATE`) and room theme updates (`ROOM_THEME_UPDATE`).
 4. Clients accept timer snapshots by timer revision/timestamp and theme updates by monotonic `roomThemeRevision`.
 5. Host heartbeat periodically synchronizes and rebroadcasts running timer state; room theme is rebroadcast on initial state request and when changed.
+6. Session links support both `/session/<room-name>` path routing and root query routing (`/?room=<room-name>`) so shared links remain functional on static hosts.
 
 ## Schedule Safety Behavior
 

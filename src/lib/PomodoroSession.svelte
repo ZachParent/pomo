@@ -34,11 +34,14 @@
   };
 
   const getSharePath = (): string => {
-    const roomPath = withBasePath(basePath, `/session/${encodeURIComponent(roomName)}`);
+    const sessionHome = withBasePath(basePath, "/");
+    const query = new URLSearchParams({ room: roomName });
+
     if (mode === "broadcast") {
-      return `${roomPath}?transport=broadcast`;
+      query.set("transport", "broadcast");
     }
-    return roomPath;
+
+    return `${sessionHome}?${query.toString()}`;
   };
 
   const getShareLink = (): string => {

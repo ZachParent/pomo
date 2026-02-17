@@ -1,6 +1,6 @@
 # Task Tracker
 
-Last updated: 2026-02-15
+Last updated: 2026-02-17
 
 ## Ticket System
 
@@ -26,3 +26,4 @@ Last updated: 2026-02-15
 - [x] [0010 - Harden alerts and add sound selection](tasks/0010-harden-alerts-and-add-sound-selection.md)
 - [x] [0011 - Consolidate settings modal and live theme editing](tasks/0011-consolidate-settings-modal-and-live-theme-editing.md)
 - [x] [0012 - Automatic host failover for active clients](tasks/0012-automatic-host-failover-for-active-clients.md)
+- [x] [0013 - Query-based shared room links](tasks/0013-query-based-shared-room-links.md)

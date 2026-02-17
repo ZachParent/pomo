@@ -20,7 +20,11 @@
   const getCurrentPathname = (): string =>
     typeof window === "undefined" ? homePath : window.location.pathname;
 
+  const getCurrentSearch = (): string =>
+    typeof window === "undefined" ? "" : window.location.search;
+
   let currentPathname = getCurrentPathname();
+  let currentSearch = getCurrentSearch();
 
   const parseRoomName = (pathname: string): string | null => {
     const normalizedPath = normalizePath(pathname);
@@ -42,8 +46,27 @@
     }
   };
 
+  const parseRoomNameFromSearch = (search: string): string | null => {
+    if (!search) {
+      return null;
+    }
+
+    const params = new URLSearchParams(search);
+    const rawRoom = params.get("room");
+    if (!rawRoom) {
+      return null;
+    }
+
+    try {
+      return decodeURIComponent(rawRoom);
+    } catch {
+      return rawRoom;
+    }
+  };
+
   const syncPathname = (): void => {
     currentPathname = getCurrentPathname();
+    currentSearch = getCurrentSearch();
   };
 
   onMount(() => {
@@ -56,8 +79,11 @@
   });
 
   $: themeLabel = $theme === "light" ? "Switch to dark theme" : "Switch to light theme";
-  $: activeRoomName = parseRoomName(currentPathname);
-  $: showHome = normalizePath(currentPathname) === normalizePath(homePath);
+  $: activeRoomName =
+    parseRoomName(currentPathname) ?? parseRoomNameFromSearch(currentSearch);
+  $: showHome =
+    normalizePath(currentPathname) === normalizePath(homePath) &&
+    activeRoomName === null;
 </script>
 
 <div class="app-shell">

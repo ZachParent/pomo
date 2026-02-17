@@ -27,8 +27,10 @@ Open: `http://127.0.0.1:5173`
 
 - Production transport:
   - `/session/<room-name>`
+  - `/?room=<room-name>`
 - Deterministic local transport:
   - `/session/<room-name>?transport=broadcast`
+  - `/?room=<room-name>&transport=broadcast`
 
 Use broadcast mode for repeatable automation and local multi-tab testing.
 
