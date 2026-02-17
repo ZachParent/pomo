@@ -37,7 +37,7 @@ Users reported that alert behavior could be missed after long tab inactivity, an
 - `src/lib/alertFeedback.test.ts`
 - `src/lib/PomodoroSession.svelte`
 - `src/app.css`
-- `tests/e2e/session.spec.ts`
+- `tests/e2e/*.spec.ts`
 
 ## Acceptance Criteria
 

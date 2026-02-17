@@ -55,6 +55,8 @@
   let pendingVisibilityRetryId: number | null = null;
   const PENDING_ALERT_RETRY_DELAY_MS = 1_200;
   let lastSyncedRevision = -1;
+  let wakeLock: WakeLockSentinel | null = null;
+  let isWakeLockSupported = true;
 
   let settingsOpen = false;
   let settingsHelpOpen = false;
@@ -124,6 +126,66 @@
       clearInterval(pendingVisibilityRetryId);
       pendingVisibilityRetryId = null;
     }
+  };
+
+  const requestWakeLock = async (): Promise<void> => {
+    if (!isWakeLockSupported || wakeLock !== null) {
+      return;
+    }
+
+    if (typeof navigator === "undefined" || !("wakeLock" in navigator)) {
+      isWakeLockSupported = false;
+      return;
+    }
+
+    try {
+      const wakeLockManager = navigator as Navigator & {
+        wakeLock: {
+          request: (type: "screen") => Promise<WakeLockSentinel>;
+        };
+      };
+      wakeLock = await wakeLockManager.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => {
+        if (wakeLock?.released) {
+          wakeLock = null;
+        }
+      });
+    } catch {
+      // Ignore wake lock request failures.
+    }
+  };
+
+  const releaseWakeLock = async (): Promise<void> => {
+    if (wakeLock === null) {
+      return;
+    }
+
+    try {
+      await wakeLock.release();
+    } catch {
+      // Ignore release failures in best-effort behavior.
+    } finally {
+      wakeLock = null;
+    }
+  };
+
+  const handleVisibilityChangeForWakeLock = async (): Promise<void> => {
+    if (view.isRunning) {
+      await requestWakeLock();
+      return;
+    }
+
+    await releaseWakeLock();
+  };
+
+  const handleVisibilityChange = (): void => {
+    flushPendingAlert();
+    void handleVisibilityChangeForWakeLock();
+  };
+
+  const handleFocus = (): void => {
+    flushPendingAlert();
+    void handleVisibilityChangeForWakeLock();
   };
 
   const onAlertPlaybackStarted = (): void => {
@@ -293,6 +355,12 @@
     triggerFlash();
     playAlert(true);
   };
+
+  $: if (view.isRunning) {
+    void requestWakeLock();
+  } else {
+    void releaseWakeLock();
+  }
 
   const previewAlertSound = (): void => {
     onAlertPlaybackStarted();
@@ -467,19 +535,20 @@
       nowMs = Date.now();
     }, 250);
 
-    document.addEventListener("visibilitychange", flushPendingAlert);
-    window.addEventListener("focus", flushPendingAlert);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
     window.addEventListener("keydown", handleWindowKeydown);
 
     return () => {
-      document.removeEventListener("visibilitychange", flushPendingAlert);
-      window.removeEventListener("focus", flushPendingAlert);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
       window.removeEventListener("keydown", handleWindowKeydown);
     };
   });
 
   onDestroy(() => {
     stopPendingVisibilityAlertRetry();
+    void releaseWakeLock();
 
     if (clockId !== null) {
       clearInterval(clockId);

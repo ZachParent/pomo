@@ -31,7 +31,7 @@ The previous hover-reveal behavior for remaining-time editing hid key controls a
 
 - `src/lib/PomodoroTimer.svelte`
 - `src/app.css`
-- `tests/e2e/session.spec.ts`
+- `tests/e2e/*.spec.ts`
 
 ## Acceptance Criteria
 

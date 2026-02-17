@@ -34,7 +34,7 @@ This change adds root query-based room routing (`/?room=<room-name>`) as a fallb
 
 - `src/App.svelte`
 - `src/lib/PomodoroSession.svelte`
-- `tests/e2e/session.spec.ts`
+- `tests/e2e/*.spec.ts`
 
 ## Acceptance Criteria
 

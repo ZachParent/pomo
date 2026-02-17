@@ -31,7 +31,7 @@ On room join, users may wait several seconds before host fallback actions become
 
 - `src/lib/PomodoroSession.svelte`
 - `src/lib/p2pStore.ts`
-- `tests/e2e/session.spec.ts`
+- `tests/e2e/*.spec.ts`
 
 ## Acceptance Criteria
 

@@ -41,7 +41,7 @@ Room sessions now include synchronized room theme metadata (`displayName`, `emoj
 5. Browser Regression Harness
 
 - `playwright.config.ts`: deterministic Playwright harness with preview web server bootstrapping, failure traces/videos/screenshots, and HTML report output.
-- `tests/e2e/session.spec.ts`: broadcast-mode multi-page flow coverage for host, client, timer control, synchronization, and room theme behaviors.
+- `tests/e2e/*.spec.ts`: broadcast-mode multi-page flow coverage for host, client, timer control, synchronization, and room theme behaviors.
 
 ## Timer Model
 

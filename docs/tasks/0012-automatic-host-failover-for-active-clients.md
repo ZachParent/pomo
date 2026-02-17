@@ -33,7 +33,7 @@ When the active host dropped, clients entered a degraded state and required manu
 ## Likely Files
 
 - `src/lib/p2pStore.ts`
-- `tests/e2e/session.spec.ts`
+- `tests/e2e/*.spec.ts`
 
 ## Acceptance Criteria
 

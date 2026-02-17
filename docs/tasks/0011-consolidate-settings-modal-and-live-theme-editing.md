@@ -35,7 +35,7 @@ The main timer surface was still too dense and room theme controls required extr
 - `src/lib/PomodoroSession.svelte`
 - `src/lib/PomodoroTimer.svelte`
 - `src/app.css`
-- `tests/e2e/session.spec.ts`
+- `tests/e2e/*.spec.ts`
 - `package.json`
 
 ## Acceptance Criteria

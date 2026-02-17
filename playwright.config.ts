@@ -7,8 +7,7 @@ const APP_URL = `${ORIGIN}/pomo`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: false,
-  workers: 1,
+  fullyParallel: true,
   timeout: 60_000,
   expect: {
     timeout: 10_000,

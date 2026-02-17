@@ -33,7 +33,7 @@ The repository relied on Vitest+Puppeteer e2e checks with limited breadth and no
 
 - `package.json`
 - `playwright.config.ts`
-- `tests/e2e/session.spec.ts`
+- `tests/e2e/*.spec.ts`
 - `scripts/explore-ui.mjs`
 - `vitest.config.ts`
 - `src/lib/timerEngine.test.ts`
@@ -52,6 +52,6 @@ The repository relied on Vitest+Puppeteer e2e checks with limited breadth and no
 ## Notes
 
 - Added `playwright.config.ts` with preview web server bootstrapping and failure artifact capture.
-- Replaced `tests/e2e/session.e2e.test.ts` with `tests/e2e/session.spec.ts` containing expanded host/client flow coverage.
+- Replaced `tests/e2e/session.e2e.test.ts` with `tests/e2e/*.spec.ts` containing expanded host/client flow coverage.
 - Migrated `scripts/explore-ui.mjs` from Puppeteer to Playwright.
 - Added/extended unit tests to raise branch coverage and support strict coverage thresholds.

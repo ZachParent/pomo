@@ -33,7 +33,7 @@ This ticket updates playback recovery so retry attempts continue in background r
 ## Likely Files
 
 - `src/lib/PomodoroTimer.svelte`
-- `tests/e2e/session.spec.ts`
+- `tests/e2e/*.spec.ts`
 
 ## Acceptance Criteria
 

@@ -32,7 +32,7 @@ The default interface consumed too much vertical space on both desktop and mobil
 
 - `src/App.svelte`
 - `src/app.css`
-- `tests/e2e/session.spec.ts`
+- `tests/e2e/*.spec.ts`
 
 ## Acceptance Criteria
 
@@ -45,4 +45,4 @@ The default interface consumed too much vertical space on both desktop and mobil
 
 - Added icon-only theme toggle rendering with accessible labels in `src/App.svelte`.
 - Reduced spacing, panel padding, control sizing, and typography scale in `src/app.css`.
-- Expanded e2e assertions in `tests/e2e/session.spec.ts` to cover first-load home visibility and leave-to-home behavior.
+- Expanded e2e assertions in `tests/e2e/*.spec.ts` to cover first-load home visibility and leave-to-home behavior.

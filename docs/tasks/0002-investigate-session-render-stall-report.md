@@ -32,7 +32,7 @@ A user-reported issue indicates the session UI does not appear until toggling li
 - `src/lib/PomodoroSession.svelte`
 - `src/lib/p2pStore.ts`
 - `src/App.svelte`
-- `tests/e2e/session.spec.ts`
+- `tests/e2e/*.spec.ts`
 
 ## Acceptance Criteria
 
@@ -46,4 +46,4 @@ A user-reported issue indicates the session UI does not appear until toggling li
 - Repro path: loading `/pomo/` could leave the main app view blank until an unrelated state update (like toggling theme) forced a rerender.
 - Root cause: base-path route activation for the root view was not consistently resolving on initial render/navigation transitions.
 - Fix: app-level pathname view resolution in `src/App.svelte` plus a dedicated navigation helper (`src/lib/navigation.ts`) used by `Home.svelte` and `PomodoroSession.svelte`.
-- Regression coverage: `tests/e2e/session.spec.ts` now includes a first-load home-route visibility assertion and a leave-to-home assertion.
+- Regression coverage: `tests/e2e/*.spec.ts` now includes a first-load home-route visibility assertion and a leave-to-home assertion.

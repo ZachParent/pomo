@@ -31,7 +31,7 @@ Current tests cover core timer behavior but do not systematically guard against 
 
 ## Likely Files
 
-- `tests/e2e/session.spec.ts`
+- `tests/e2e/*.spec.ts`
 - `scripts/explore-ui.mjs`
 - `src/lib/scheduleSafety.test.ts`
 - `src/lib/roomTheme.test.ts`
@@ -46,5 +46,5 @@ Current tests cover core timer behavior but do not systematically guard against 
 
 ## Notes
 
-- Added e2e assertions for schedule warning confirmation, connecting-state host fallback, and room theme synchronization in `tests/e2e/session.spec.ts`.
+- Added e2e assertions for schedule warning confirmation, connecting-state host fallback, and room theme synchronization in `tests/e2e/*.spec.ts`.
 - Current e2e failure artifacts are captured in `test-results` and reports in `artifacts/playwright-report`.
